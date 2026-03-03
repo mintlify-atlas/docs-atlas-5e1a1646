@@ -188,22 +188,9 @@ export interface SendEmailOptions {
 
 ## Extended Types (from types/index.ts)
 
-### LettermintModuleOptions
-
-Extended module configuration options.
-
-```typescript
-export interface LettermintModuleOptions {
-  /** Lettermint API key */
-  apiKey?: string
-  
-  /** Base URL for the Lettermint API */
-  baseUrl?: string
-  
-  /** Request timeout in milliseconds */
-  timeout?: number
-}
-```
+<Note>
+  The following types are defined in `src/runtime/types/index.ts` for internal use and compatibility with the Lettermint SDK. They are not directly used for module configuration.
+</Note>
 
 ### LettermintEmailAddress
 
@@ -219,14 +206,9 @@ export interface LettermintEmailAddress {
 }
 ```
 
-#### Usage
-
-```typescript
-const address: LettermintEmailAddress = {
-  email: 'john@example.com',
-  name: 'John Doe'
-}
-```
+<Warning>
+  This type is defined for compatibility with the Lettermint SDK but is **not currently supported** by the `useLettermint()` composable or `sendEmail()` utility. Use plain string email addresses instead.
+</Warning>
 
 ### LettermintAttachment
 
@@ -330,21 +312,18 @@ const apiKey = config.lettermint.apiKey // ✅ Type-safe
   <Tab title="Client Component">
     ```vue
     <script setup lang="ts">
-    import type { 
-      LettermintEmailOptions, 
-      LettermintResponse 
-    } from '#build/types/nuxt-lettermint'
-
+    // useLettermint is auto-imported by Nuxt
     const { send } = useLettermint()
 
-    const emailOptions: LettermintEmailOptions = {
+    // Types are inferred automatically
+    const emailOptions = {
       from: 'hello@example.com',
       to: 'user@example.com',
       subject: 'Hello',
       html: '<p>Hello World</p>'
     }
 
-    const response: LettermintResponse = await send(emailOptions)
+    const response = await send(emailOptions)
     </script>
     ```
   </Tab>
@@ -352,12 +331,11 @@ const apiKey = config.lettermint.apiKey // ✅ Type-safe
   <Tab title="API Route">
     ```typescript
     // server/api/send.post.ts
-    import type { SendEmailOptions } from '#lettermint/server'
-
+    // sendEmail is auto-imported by Nuxt
     export default defineEventHandler(async (event) => {
       const body = await readBody(event)
       
-      const options: SendEmailOptions = {
+      const options = {
         from: 'hello@example.com',
         to: body.email,
         subject: 'Welcome',
@@ -372,26 +350,25 @@ const apiKey = config.lettermint.apiKey // ✅ Type-safe
 
   <Tab title="With Attachments">
     ```typescript
-    import type { 
-      LettermintAttachment,
-      SendEmailOptions 
-    } from '#lettermint/server'
+    // server/api/invoice.post.ts
+    export default defineEventHandler(async (event) => {
+      const { pdfBuffer } = await readBody(event)
 
-    const attachment: LettermintAttachment = {
-      filename: 'invoice.pdf',
-      content: pdfBuffer,
-      contentType: 'application/pdf'
-    }
+      const options = {
+        from: 'billing@example.com',
+        to: 'customer@example.com',
+        subject: 'Invoice',
+        html: '<p>Invoice attached</p>',
+        attachments: [{
+          filename: 'invoice.pdf',
+          content: pdfBuffer,
+          contentType: 'application/pdf'
+        }]
+      }
 
-    const options: SendEmailOptions = {
-      from: 'billing@example.com',
-      to: 'customer@example.com',
-      subject: 'Invoice',
-      html: '<p>Invoice attached</p>',
-      attachments: [attachment]
-    }
-
-    await sendEmail(options)
+      await sendEmail(options)
+      return { success: true }
+    })
     ```
   </Tab>
 
@@ -413,38 +390,29 @@ const apiKey = config.lettermint.apiKey // ✅ Type-safe
 
 ## Type Imports
 
-Types can be imported from different locations depending on the context:
-
-### Client-Side Types
-
-```typescript
-// In client components, pages, or composables
-import type { 
-  LettermintEmailOptions,
-  LettermintResponse,
-  UseLettermintReturn
-} from '#build/types/nuxt-lettermint'
-```
-
-### Server-Side Types
-
-```typescript
-// In server routes, middleware, or plugins
-import type { 
-  SendEmailOptions
-} from '#lettermint/server'
-
-// Or import directly from the module
-import type { 
-  SendEmailOptions 
-} from '~/server/utils/lettermint'
-```
+<Note>
+  Most types are available automatically through Nuxt's auto-import system. Explicit imports are only needed in specific cases.
+</Note>
 
 ### Module Configuration Types
 
 ```typescript
 // In nuxt.config.ts
 import type { ModuleOptions } from 'nuxt-lettermint'
+```
+
+### Explicit Type Imports (Optional)
+
+If you need to explicitly import types for type annotations, you can use:
+
+```typescript
+// The composable and utilities are auto-imported
+// But you can import their types for explicit annotations
+const { send } = useLettermint()
+const result = await sendEmail({ /* ... */ })
+
+// Types are inferred automatically from the functions
+// No explicit imports needed in most cases
 ```
 
 ## Related
