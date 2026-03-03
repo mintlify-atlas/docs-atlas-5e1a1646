@@ -1,0 +1,270 @@
+---
+title: Tags and metadata
+description: Organize and track emails with tags and metadata
+---
+
+Use tags and metadata to categorize, track, and organize your transactional emails.
+
+## Tags
+
+Tags help you categorize and filter emails in your Lettermint dashboard:
+
+<Tabs>
+  <Tab title="Server-side">
+    ```typescript
+    import { sendEmail } from '#imports'
+
+    export default defineEventHandler(async () => {
+      const result = await sendEmail({
+        from: 'nuxt@lettermint.dev',
+        to: 'ok@testing.lettermint.co',
+        subject: 'Test Email',
+        html: '<h1>Hello from sendEmail function</h1>',
+        tags: ['test']
+      })
+
+      return { success: true, result }
+    })
+    ```
+  </Tab>
+
+  <Tab title="Client-side">
+    ```vue
+    <script setup>
+    const { send } = useLettermint()
+
+    await send({
+      from: 'demo@lettermint.co',
+      to: 'ok@testing.lettermint.co',
+      subject: 'Test Email',
+      html: '<h1>Hello World</h1>',
+      tags: ['nuxt']
+    })
+    </script>
+    ```
+  </Tab>
+
+  <Tab title="Fluent API">
+    ```typescript
+    import { useLettermint } from '#imports'
+
+    export default defineEventHandler(async () => {
+      const lettermint = useLettermint()
+
+      const result = await lettermint.email
+        .from('nuxt@lettermint.dev')
+        .to('ok@testing.lettermint.co')
+        .subject('Test SDK Email')
+        .html('<h1>Hello from Lettermint SDK</h1>')
+        .tag('sdk-test')
+        .send()
+
+      return { success: true, result }
+    })
+    ```
+  </Tab>
+</Tabs>
+
+## Multiple tags
+
+Add multiple tags to better organize your emails:
+
+```typescript
+import { sendEmail } from '#imports'
+
+export default defineEventHandler(async () => {
+  const result = await sendEmail({
+    from: 'nuxt@lettermint.dev',
+    to: 'ok@testing.lettermint.co',
+    subject: 'Welcome Email',
+    html: '<h1>Welcome to our platform!</h1>',
+    tags: ['welcome', 'onboarding', 'automated']
+  })
+
+  return { success: true, result }
+})
+```
+
+<Info>
+  Tags are useful for filtering and searching emails in your dashboard, as well as for analytics and reporting.
+</Info>
+
+## Metadata
+
+Store custom data with your emails using the `metadata` field. This is useful for tracking user IDs, campaign information, or any custom data:
+
+```typescript
+import { sendEmail } from '#imports'
+
+export default defineEventHandler(async () => {
+  const result = await sendEmail({
+    from: 'nuxt@lettermint.dev',
+    to: 'ok@testing.lettermint.co',
+    subject: 'Order Confirmation',
+    html: '<h1>Your order has been confirmed</h1>',
+    metadata: {
+      userId: '12345',
+      orderId: 'ORD-789',
+      orderTotal: 99.99,
+      customerTier: 'premium'
+    },
+    tags: ['order', 'confirmation']
+  })
+
+  return { success: true, result }
+})
+```
+
+## Custom headers
+
+Add custom email headers for advanced use cases:
+
+```typescript
+import { sendEmail } from '#imports'
+
+export default defineEventHandler(async () => {
+  const result = await sendEmail({
+    from: 'nuxt@lettermint.dev',
+    to: 'ok@testing.lettermint.co',
+    subject: 'Custom Headers Example',
+    html: '<h1>Email with custom headers</h1>',
+    headers: {
+      'X-Custom-Header': 'custom-value',
+      'X-Campaign-ID': 'summer-2024',
+      'X-Priority': 'high'
+    }
+  })
+
+  return { success: true, result }
+})
+```
+
+<Note>
+  Custom headers can be useful for email tracking, categorization, or integration with third-party services.
+</Note>
+
+## Complete example
+
+Combine tags, metadata, and custom headers for comprehensive email tracking:
+
+```typescript
+import { sendEmail } from '#imports'
+
+export default defineEventHandler(async () => {
+  const result = await sendEmail({
+    from: 'nuxt@lettermint.dev',
+    to: 'ok@testing.lettermint.co',
+    cc: 'ok@testing.lettermint.co',
+    bcc: 'ok@testing.lettermint.co',
+    replyTo: 'ok@testing.lettermint.co',
+    subject: 'Test Full Options',
+    text: 'Plain text version',
+    html: '<h1>HTML version</h1>',
+    headers: {
+      'X-Custom-Header': 'custom-value'
+    },
+    metadata: {
+      userId: '12345',
+      campaign: 'test-campaign'
+    },
+    tags: ['test', 'full-options'],
+    attachments: [
+      {
+        filename: 'test.txt',
+        content: 'Test attachment content'
+      }
+    ]
+  })
+
+  return { success: true, result }
+})
+```
+
+## Dynamic tags and metadata
+
+Use dynamic values based on user data or application state:
+
+<Tabs>
+  <Tab title="User-specific">
+    ```typescript
+    import { sendEmail } from '#imports'
+
+    export default defineEventHandler(async (event) => {
+      const user = await getUserFromSession(event)
+
+      const result = await sendEmail({
+        from: 'nuxt@lettermint.dev',
+        to: user.email,
+        subject: `Welcome ${user.name}!`,
+        html: `<h1>Welcome ${user.name}!</h1>`,
+        metadata: {
+          userId: user.id,
+          signupDate: user.createdAt,
+          accountType: user.type
+        },
+        tags: ['welcome', user.type, 'automated']
+      })
+
+      return { success: true, result }
+    })
+    ```
+  </Tab>
+
+  <Tab title="Campaign tracking">
+    ```typescript
+    import { sendEmail } from '#imports'
+
+    export default defineEventHandler(async (event) => {
+      const campaign = await getCampaignData(event)
+
+      const result = await sendEmail({
+        from: 'nuxt@lettermint.dev',
+        to: campaign.recipients,
+        subject: campaign.subject,
+        html: campaign.template,
+        metadata: {
+          campaignId: campaign.id,
+          campaignName: campaign.name,
+          sentAt: new Date().toISOString(),
+          segment: campaign.segment
+        },
+        tags: ['campaign', campaign.type, campaign.segment],
+        headers: {
+          'X-Campaign-ID': campaign.id,
+          'X-Campaign-Type': campaign.type
+        }
+      })
+
+      return { success: true, result }
+    })
+    ```
+  </Tab>
+</Tabs>
+
+## Type definition
+
+The metadata and tags types:
+
+```typescript
+interface LettermintEmailOptions {
+  // ... other fields
+  tags?: string[]
+  metadata?: Record<string, unknown>
+  headers?: Record<string, string>
+}
+```
+
+<Info>
+  Metadata accepts any JSON-serializable values, including strings, numbers, booleans, arrays, and nested objects.
+</Info>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Basic email" icon="envelope" href="/examples/basic-email">
+    Learn the basics of sending emails
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/send-email">
+    Explore the complete API reference
+  </Card>
+</CardGroup>

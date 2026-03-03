@@ -1,0 +1,345 @@
+---
+title: "sendEmail"
+description: "Server-side utility function for sending emails"
+---
+
+## Overview
+
+The `sendEmail` utility provides a high-level server-side function for sending emails through the Lettermint API. It abstracts the fluent email builder API and provides a simple object-based interface.
+
+<Note>
+  This function can only be used in **server contexts** such as API routes, server middleware, or Nitro plugins.
+</Note>
+
+## Signature
+
+```typescript
+async function sendEmail(options: SendEmailOptions): Promise<any>
+```
+
+## Parameters
+
+The function accepts a single `options` object with the following properties:
+
+<ParamField path="from" type="string" required>
+  The sender's email address.
+  
+  ```typescript
+  from: 'hello@example.com'
+  ```
+</ParamField>
+
+<ParamField path="to" type="string | string[]" required>
+  The recipient's email address or an array of recipient addresses.
+  
+  ```typescript
+  to: 'user@example.com'
+  // or
+  to: ['user1@example.com', 'user2@example.com']
+  ```
+</ParamField>
+
+<ParamField path="subject" type="string" required>
+  The email subject line.
+  
+  ```typescript
+  subject: 'Welcome to our service'
+  ```
+</ParamField>
+
+<ParamField path="text" type="string">
+  Plain text content of the email.
+  
+  ```typescript
+  text: 'Thank you for signing up!'
+  ```
+</ParamField>
+
+<ParamField path="html" type="string">
+  HTML content of the email. If both `text` and `html` are provided, email clients will display the HTML version with text as a fallback.
+  
+  ```typescript
+  html: '<h1>Welcome!</h1><p>Thank you for signing up!</p>'
+  ```
+</ParamField>
+
+<ParamField path="cc" type="string | string[]">
+  Carbon copy recipient(s).
+  
+  ```typescript
+  cc: 'manager@example.com'
+  // or
+  cc: ['manager1@example.com', 'manager2@example.com']
+  ```
+</ParamField>
+
+<ParamField path="bcc" type="string | string[]">
+  Blind carbon copy recipient(s).
+  
+  ```typescript
+  bcc: 'archive@example.com'
+  ```
+</ParamField>
+
+<ParamField path="replyTo" type="string | string[]">
+  Reply-to address(es).
+  
+  ```typescript
+  replyTo: 'support@example.com'
+  ```
+</ParamField>
+
+<ParamField path="headers" type="Record<string, string>">
+  Custom email headers as key-value pairs.
+  
+  ```typescript
+  headers: {
+    'X-Custom-Header': 'value',
+    'X-Priority': 'high'
+  }
+  ```
+</ParamField>
+
+<ParamField path="metadata" type="Record<string, unknown>">
+  Custom metadata to attach to the email for tracking purposes.
+  
+  ```typescript
+  metadata: {
+    userId: '12345',
+    campaign: 'welcome-series'
+  }
+  ```
+</ParamField>
+
+<ParamField path="tags" type="string[]">
+  Tags to categorize and filter emails.
+  
+  ```typescript
+  tags: ['welcome', 'onboarding']
+  ```
+</ParamField>
+
+<ParamField path="attachments" type="Array<{ filename: string, content: string | Buffer, contentType?: string }>">
+  File attachments to include with the email.
+  
+  <Expandable title="Attachment Object">
+    <ResponseField name="filename" type="string" required>
+      The name of the file as it will appear to recipients.
+    </ResponseField>
+    
+    <ResponseField name="content" type="string | Buffer" required>
+      The file content as a base64 string or Buffer.
+    </ResponseField>
+    
+    <ResponseField name="contentType" type="string">
+      The MIME type of the file (e.g., 'application/pdf', 'image/png').
+    </ResponseField>
+  </Expandable>
+  
+  ```typescript
+  attachments: [
+    {
+      filename: 'invoice.pdf',
+      content: pdfBuffer,
+      contentType: 'application/pdf'
+    }
+  ]
+  ```
+</ParamField>
+
+## Return Value
+
+<ResponseField name="return" type="Promise<any>">
+  Returns a promise that resolves to the Lettermint API response. The exact shape depends on the Lettermint SDK, but typically includes a message ID and status.
+</ResponseField>
+
+## Usage Examples
+
+<Tabs>
+  <Tab title="API Route">
+    ```typescript
+    // server/api/welcome.post.ts
+    export default defineEventHandler(async (event) => {
+      const body = await readBody(event)
+
+      const result = await sendEmail({
+        from: 'hello@example.com',
+        to: body.email,
+        subject: 'Welcome to our service!',
+        html: `
+          <h1>Welcome, ${body.name}!</h1>
+          <p>Thank you for signing up.</p>
+        `
+      })
+
+      return {
+        success: true,
+        messageId: result.message_id
+      }
+    })
+    ```
+  </Tab>
+
+  <Tab title="With Multiple Recipients">
+    ```typescript
+    // server/api/notify-team.post.ts
+    export default defineEventHandler(async () => {
+      await sendEmail({
+        from: 'system@example.com',
+        to: ['admin@example.com', 'manager@example.com'],
+        cc: 'archive@example.com',
+        subject: 'Daily Report',
+        text: 'Here is your daily report.',
+        tags: ['report', 'automated']
+      })
+
+      return { success: true }
+    })
+    ```
+  </Tab>
+
+  <Tab title="With Attachments">
+    ```typescript
+    // server/api/send-invoice.post.ts
+    import fs from 'fs'
+
+    export default defineEventHandler(async (event) => {
+      const { email, invoiceId } = await readBody(event)
+      
+      // Generate or read PDF
+      const pdfBuffer = fs.readFileSync(`./invoices/${invoiceId}.pdf`)
+
+      await sendEmail({
+        from: 'billing@example.com',
+        to: email,
+        subject: `Invoice #${invoiceId}`,
+        html: '<p>Please find your invoice attached.</p>',
+        attachments: [
+          {
+            filename: `invoice-${invoiceId}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf'
+          }
+        ],
+        metadata: {
+          invoiceId,
+          type: 'invoice'
+        },
+        tags: ['invoice', 'billing']
+      })
+
+      return { success: true }
+    })
+    ```
+  </Tab>
+
+  <Tab title="With Custom Headers">
+    ```typescript
+    // server/api/transactional.post.ts
+    export default defineEventHandler(async (event) => {
+      const { email, orderNumber } = await readBody(event)
+
+      await sendEmail({
+        from: 'orders@example.com',
+        to: email,
+        subject: `Order Confirmation #${orderNumber}`,
+        html: '<h1>Your order has been confirmed!</h1>',
+        replyTo: 'support@example.com',
+        headers: {
+          'X-Order-Number': orderNumber,
+          'X-Priority': 'high'
+        },
+        metadata: {
+          orderNumber,
+          type: 'order-confirmation'
+        }
+      })
+
+      return { success: true }
+    })
+    ```
+  </Tab>
+
+  <Tab title="In Nitro Plugin">
+    ```typescript
+    // server/plugins/welcome-email.ts
+    export default defineNitroPlugin((nitroApp) => {
+      nitroApp.hooks.hook('user:registered', async (user) => {
+        await sendEmail({
+          from: 'hello@example.com',
+          to: user.email,
+          subject: 'Welcome!',
+          html: `<h1>Welcome, ${user.name}!</h1>`,
+          metadata: {
+            userId: user.id,
+            event: 'registration'
+          },
+          tags: ['welcome', 'onboarding']
+        })
+      })
+    })
+    ```
+  </Tab>
+</Tabs>
+
+## Type Definition
+
+```typescript
+export interface SendEmailOptions {
+  from: string
+  to: string | string[]
+  subject: string
+  text?: string
+  html?: string
+  cc?: string | string[]
+  bcc?: string | string[]
+  replyTo?: string | string[]
+  headers?: Record<string, string>
+  metadata?: Record<string, unknown>
+  tags?: string[]
+  attachments?: Array<{
+    filename: string
+    content: string | Buffer
+    contentType?: string
+  }>
+}
+
+export async function sendEmail(options: SendEmailOptions): Promise<any>
+```
+
+## How It Works
+
+The `sendEmail` function:
+
+1. Retrieves the Lettermint SDK instance using `useLettermint()`
+2. Uses the fluent email builder API to construct the email
+3. Handles array values for recipients (to, cc, bcc, replyTo)
+4. Converts Buffer attachments to base64 strings
+5. Sends the email and returns the result
+
+## Error Handling
+
+```typescript
+try {
+  const result = await sendEmail({
+    from: 'hello@example.com',
+    to: 'user@example.com',
+    subject: 'Test',
+    html: '<p>Test email</p>'
+  })
+  
+  console.log('Email sent:', result.message_id)
+} catch (error) {
+  console.error('Failed to send email:', error)
+  throw createError({
+    statusCode: 500,
+    message: 'Failed to send email'
+  })
+}
+```
+
+## Related
+
+- [useLettermint (server)](/api/lettermint-instance) - Access the raw Lettermint SDK instance
+- [useLettermint (client)](/api/use-lettermint) - Client-side composable
+- [Types Reference](/api/types) - TypeScript type definitions

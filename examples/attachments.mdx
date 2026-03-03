@@ -1,0 +1,257 @@
+---
+title: Attachments
+description: Send emails with file attachments
+---
+
+Attach files to your emails using the `attachments` array. Attachments support both string and Buffer content.
+
+## Basic attachment
+
+Add a simple text file attachment:
+
+```typescript
+import { sendEmail } from '#imports'
+
+export default defineEventHandler(async () => {
+  const result = await sendEmail({
+    from: 'nuxt@lettermint.dev',
+    to: 'ok@testing.lettermint.co',
+    subject: 'Email with attachment',
+    html: '<h1>Please see the attached file</h1>',
+    attachments: [
+      {
+        filename: 'test.txt',
+        content: 'Test attachment content'
+      }
+    ]
+  })
+
+  return { success: true, result }
+})
+```
+
+## Multiple attachments
+
+Attach multiple files to a single email:
+
+```typescript
+import { sendEmail } from '#imports'
+
+export default defineEventHandler(async () => {
+  const result = await sendEmail({
+    from: 'nuxt@lettermint.dev',
+    to: 'ok@testing.lettermint.co',
+    subject: 'Multiple attachments',
+    html: '<h1>Multiple files attached</h1>',
+    attachments: [
+      {
+        filename: 'document.txt',
+        content: 'Document content here'
+      },
+      {
+        filename: 'data.json',
+        content: JSON.stringify({ foo: 'bar' }, null, 2),
+        contentType: 'application/json'
+      }
+    ]
+  })
+
+  return { success: true, result }
+})
+```
+
+## Buffer content
+
+Use Buffer for binary file content:
+
+<Tabs>
+  <Tab title="From file">
+    ```typescript
+    import { sendEmail } from '#imports'
+    import { readFile } from 'fs/promises'
+
+    export default defineEventHandler(async () => {
+      // Read file from filesystem
+      const fileBuffer = await readFile('./path/to/file.pdf')
+
+      const result = await sendEmail({
+        from: 'nuxt@lettermint.dev',
+        to: 'ok@testing.lettermint.co',
+        subject: 'PDF attachment',
+        html: '<h1>PDF file attached</h1>',
+        attachments: [
+          {
+            filename: 'document.pdf',
+            content: fileBuffer,
+            contentType: 'application/pdf'
+          }
+        ]
+      })
+
+      return { success: true, result }
+    })
+    ```
+  </Tab>
+
+  <Tab title="From string">
+    ```typescript
+    import { sendEmail } from '#imports'
+
+    export default defineEventHandler(async () => {
+      // Create buffer from string
+      const content = Buffer.from('File content here', 'utf-8')
+
+      const result = await sendEmail({
+        from: 'nuxt@lettermint.dev',
+        to: 'ok@testing.lettermint.co',
+        subject: 'Buffer attachment',
+        html: '<h1>File attached</h1>',
+        attachments: [
+          {
+            filename: 'file.txt',
+            content: content
+          }
+        ]
+      })
+
+      return { success: true, result }
+    })
+    ```
+  </Tab>
+
+  <Tab title="Base64 encoded">
+    ```typescript
+    import { sendEmail } from '#imports'
+
+    export default defineEventHandler(async () => {
+      // Base64 encoded content
+      const base64Content = 'SGVsbG8gV29ybGQh' // "Hello World!" in base64
+      const buffer = Buffer.from(base64Content, 'base64')
+
+      const result = await sendEmail({
+        from: 'nuxt@lettermint.dev',
+        to: 'ok@testing.lettermint.co',
+        subject: 'Base64 attachment',
+        html: '<h1>Decoded file attached</h1>',
+        attachments: [
+          {
+            filename: 'message.txt',
+            content: buffer
+          }
+        ]
+      })
+
+      return { success: true, result }
+    })
+    ```
+  </Tab>
+</Tabs>
+
+## Content types
+
+Specify the MIME type of your attachments using the `contentType` field:
+
+```typescript
+import { sendEmail } from '#imports'
+
+export default defineEventHandler(async () => {
+  const result = await sendEmail({
+    from: 'nuxt@lettermint.dev',
+    to: 'ok@testing.lettermint.co',
+    subject: 'Various file types',
+    html: '<h1>Multiple file types attached</h1>',
+    attachments: [
+      {
+        filename: 'data.json',
+        content: JSON.stringify({ key: 'value' }),
+        contentType: 'application/json'
+      },
+      {
+        filename: 'style.css',
+        content: 'body { margin: 0; }',
+        contentType: 'text/css'
+      },
+      {
+        filename: 'image.png',
+        content: imageBuffer,
+        contentType: 'image/png'
+      }
+    ]
+  })
+
+  return { success: true, result }
+})
+```
+
+<Info>
+  If you don't specify a `contentType`, it will be inferred from the filename extension or default to `text/plain`.
+</Info>
+
+## Complete example with all options
+
+Combine attachments with other email features:
+
+```typescript
+import { sendEmail } from '#imports'
+
+export default defineEventHandler(async () => {
+  const result = await sendEmail({
+    from: 'nuxt@lettermint.dev',
+    to: 'ok@testing.lettermint.co',
+    cc: 'ok@testing.lettermint.co',
+    bcc: 'ok@testing.lettermint.co',
+    replyTo: 'ok@testing.lettermint.co',
+    subject: 'Test Full Options',
+    text: 'Plain text version',
+    html: '<h1>HTML version</h1>',
+    headers: {
+      'X-Custom-Header': 'custom-value'
+    },
+    metadata: {
+      userId: '12345',
+      campaign: 'test-campaign'
+    },
+    tags: ['test', 'full-options'],
+    attachments: [
+      {
+        filename: 'test.txt',
+        content: 'Test attachment content'
+      }
+    ]
+  })
+
+  return { success: true, result }
+})
+```
+
+## Type definition
+
+The attachment interface:
+
+```typescript
+interface LettermintAttachment {
+  filename: string
+  content: string | Buffer
+  contentType?: string
+}
+
+interface LettermintEmailOptions {
+  // ... other fields
+  attachments?: LettermintAttachment[]
+}
+```
+
+<Note>
+  Attachments are supported in both client-side and server-side email sending. However, be mindful of file sizes when sending from the client.
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Tags and metadata" icon="tag" href="/examples/tags-metadata">
+    Organize and track emails with tags and metadata
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration/setup">
+    Learn about all configuration options
+  </Card>
+</CardGroup>

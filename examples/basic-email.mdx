@@ -1,0 +1,204 @@
+---
+title: Basic email
+description: Send a simple email with Nuxt Lettermint
+---
+
+Send a basic email with minimal configuration using the Nuxt Lettermint module.
+
+## Client-side example
+
+Use the `useLettermint()` composable to send emails from your Vue components:
+
+<Tabs>
+  <Tab title="Simple send">
+    ```vue
+    <script setup>
+    const { send, sending, error } = useLettermint()
+
+    await send({
+      from: 'sender@example.com',
+      to: 'ok@testing.lettermint.co',
+      subject: 'Hello!',
+      html: '<h1>Hello World</h1>'
+    })
+    </script>
+    ```
+  </Tab>
+
+  <Tab title="With text and HTML">
+    ```vue
+    <script setup>
+    const { send, sending, error, lastMessageId } = useLettermint()
+
+    const sendEmail = async () => {
+      const result = await send({
+        from: 'demo@lettermint.co',
+        to: 'ok@testing.lettermint.co',
+        subject: 'Test Email from Nuxt Lettermint Module',
+        text: 'This is a test email sent from the Nuxt Lettermint module.',
+        html: '<h1>Test Email</h1><p>This is a <strong>test email</strong> sent from the Nuxt Lettermint module.</p>',
+        tags: ['nuxt']
+      })
+
+      if (result.success) {
+        console.log('Email sent!', lastMessageId.value)
+      }
+    }
+    </script>
+    ```
+  </Tab>
+
+  <Tab title="With loading state">
+    ```vue
+    <template>
+      <div>
+        <button
+          @click="sendTestEmail"
+          :disabled="sending"
+        >
+          {{ sending ? 'Sending...' : 'Send Email' }}
+        </button>
+
+        <div v-if="error" class="error">
+          Error: {{ error }}
+        </div>
+
+        <div v-if="lastMessageId" class="success">
+          Email sent! Message ID: {{ lastMessageId }}
+        </div>
+      </div>
+    </template>
+
+    <script setup>
+    const { send, sending, error, lastMessageId } = useLettermint()
+
+    const sendTestEmail = async () => {
+      await send({
+        from: 'demo@lettermint.co',
+        to: 'ok@testing.lettermint.co',
+        subject: 'Test Email',
+        html: '<h1>Hello World</h1>'
+      })
+    }
+    </script>
+    ```
+  </Tab>
+</Tabs>
+
+## Server-side example
+
+Send emails directly from your server routes using the `sendEmail` function:
+
+<Tabs>
+  <Tab title="Basic server email">
+    ```typescript
+    // server/api/send.post.ts
+    import { sendEmail } from '#imports'
+
+    export default defineEventHandler(async () => {
+      try {
+        const result = await sendEmail({
+          from: 'nuxt@lettermint.dev',
+          to: 'ok@testing.lettermint.co',
+          subject: 'Test Email',
+          html: '<h1>Hello from sendEmail function</h1>',
+          tags: ['test']
+        })
+
+        return {
+          success: true,
+          result
+        }
+      }
+      catch (error) {
+        return {
+          success: false,
+          error: (error as Error).message
+        }
+      }
+    })
+    ```
+  </Tab>
+
+  <Tab title="With text and HTML">
+    ```typescript
+    // server/api/send-email.post.ts
+    import { sendEmail } from '#imports'
+
+    export default defineEventHandler(async () => {
+      const result = await sendEmail({
+        from: 'demo@lettermint.co',
+        to: 'ok@testing.lettermint.co',
+        subject: 'Server-side Email from Nuxt Lettermint',
+        text: 'This email was sent directly from the server using the Lettermint SDK.',
+        html: '<h2>Server-side Email</h2><p>This email was sent directly from the server using the <strong>Lettermint SDK</strong>.</p>',
+        tags: ['nuxt']
+      })
+
+      return {
+        success: true,
+        messageId: result.message_id,
+        status: result.status
+      }
+    })
+    ```
+  </Tab>
+
+  <Tab title="Fluent API">
+    ```typescript
+    // server/api/send-fluent.post.ts
+    import { useLettermint } from '#imports'
+
+    export default defineEventHandler(async () => {
+      try {
+        const lettermint = useLettermint()
+
+        const result = await lettermint.email
+          .from('nuxt@lettermint.dev')
+          .to('ok@testing.lettermint.co')
+          .subject('Test SDK Email')
+          .html('<h1>Hello from Lettermint SDK</h1>')
+          .tag('sdk-test')
+          .send()
+
+        return {
+          success: true,
+          result
+        }
+      }
+      catch (error) {
+        return {
+          success: false,
+          error: (error as Error).message
+        }
+      }
+    })
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  The `sendEmail` function is available server-side only. For client-side email sending, use the `useLettermint()` composable.
+</Note>
+
+## Response format
+
+Both client and server methods return a response with the following structure:
+
+```typescript
+{
+  message_id: string
+  status: 'pending' | 'sent' | 'failed'
+}
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Multiple recipients" icon="users" href="/examples/multiple-recipients">
+    Learn how to send emails to multiple recipients with CC and BCC
+  </Card>
+  <Card title="Attachments" icon="paperclip" href="/examples/attachments">
+    Add file attachments to your emails
+  </Card>
+</CardGroup>

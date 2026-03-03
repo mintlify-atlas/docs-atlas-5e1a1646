@@ -1,0 +1,375 @@
+---
+title: Auto-generated endpoint
+description: Configure the auto-generated API endpoint
+---
+
+## Overview
+
+By default, the Nuxt Lettermint module automatically creates an API endpoint at `/api/lettermint/send` that handles email sending requests from the client side. This endpoint is used by the `useLettermint()` composable to send emails securely without exposing your API key to the client.
+
+## Default Behavior
+
+When the module is installed with default settings, it automatically registers the endpoint:
+
+```typescript
+// Automatically created by the module
+if (options.autoEndpoint !== false) {
+  addServerHandler({
+    route: '/api/lettermint/send',
+    handler: resolver.resolve('./runtime/server/api/lettermint/send.post'),
+  })
+}
+```
+
+## Endpoint Features
+
+The auto-generated endpoint provides:
+
+<CardGroup cols={2}>
+  <Card title="Validation" icon="check-circle">
+    Validates required fields (from, to, subject, and text/html)
+  </Card>
+  <Card title="Error Handling" icon="shield">
+    Comprehensive error handling for API and validation errors
+  </Card>
+  <Card title="Security" icon="lock">
+    Keeps your API key secure on the server side
+  </Card>
+  <Card title="Type Safety" icon="code">
+    Full TypeScript support with proper types
+  </Card>
+</CardGroup>
+
+## Configuration
+
+### Enable Auto-Endpoint (Default)
+
+```typescript nuxt.config.ts
+export default defineNuxtConfig({
+  modules: ['nuxt-lettermint'],
+  lettermint: {
+    autoEndpoint: true // This is the default
+  }
+})
+```
+
+With this configuration, you can use the client-side composable:
+
+```vue
+<script setup>
+const { send, sending, error } = useLettermint()
+
+await send({
+  from: 'sender@example.com',
+  to: 'recipient@example.com',
+  subject: 'Hello!',
+  html: '<h1>Hello World</h1>'
+})
+</script>
+```
+
+### Disable Auto-Endpoint
+
+If you want to create your own custom endpoint, disable the auto-generated one:
+
+```typescript nuxt.config.ts
+export default defineNuxtConfig({
+  modules: ['nuxt-lettermint'],
+  lettermint: {
+    autoEndpoint: false
+  }
+})
+```
+
+<Warning>
+  When you disable the auto-generated endpoint, the `useLettermint()` composable will **not work** unless you create a custom endpoint at the same path (`/api/lettermint/send`).
+</Warning>
+
+## When to Disable the Auto-Endpoint
+
+Consider disabling the auto-generated endpoint if you need:
+
+<AccordionGroup>
+  <Accordion title="Custom validation logic">
+    Add additional validation rules beyond the default required fields:
+    
+    ```typescript server/api/lettermint/send.post.ts
+    import { sendEmail } from '#imports'
+    import { defineEventHandler, readBody, createError } from 'h3'
+    
+    export default defineEventHandler(async (event) => {
+      const body = await readBody(event)
+      
+      // Custom validation
+      if (!body.from.endsWith('@yourdomain.com')) {
+        throw createError({
+          statusCode: 400,
+          message: 'From address must be from your domain'
+        })
+      }
+      
+      return await sendEmail(body)
+    })
+    ```
+  </Accordion>
+  
+  <Accordion title="Rate limiting or throttling">
+    Implement rate limiting to prevent abuse:
+    
+    ```typescript server/api/lettermint/send.post.ts
+    import { sendEmail } from '#imports'
+    import { defineEventHandler } from 'h3'
+    
+    export default defineEventHandler(async (event) => {
+      // Add rate limiting logic
+      await checkRateLimit(event)
+      
+      const body = await readBody(event)
+      return await sendEmail(body)
+    })
+    ```
+  </Accordion>
+  
+  <Accordion title="Authentication/authorization">
+    Require users to be authenticated before sending emails:
+    
+    ```typescript server/api/lettermint/send.post.ts
+    import { sendEmail } from '#imports'
+    import { defineEventHandler } from 'h3'
+    
+    export default defineEventHandler(async (event) => {
+      // Verify user is authenticated
+      const user = await requireAuth(event)
+      
+      const body = await readBody(event)
+      return await sendEmail({
+        ...body,
+        from: user.email // Use authenticated user's email
+      })
+    })
+    ```
+  </Accordion>
+  
+  <Accordion title="Logging and analytics">
+    Track email sending activity:
+    
+    ```typescript server/api/lettermint/send.post.ts
+    import { sendEmail } from '#imports'
+    import { defineEventHandler } from 'h3'
+    
+    export default defineEventHandler(async (event) => {
+      const body = await readBody(event)
+      
+      // Log email activity
+      await logEmailActivity({
+        from: body.from,
+        to: body.to,
+        subject: body.subject,
+        timestamp: new Date()
+      })
+      
+      return await sendEmail(body)
+    })
+    ```
+  </Accordion>
+  
+  <Accordion title="Server-side only usage">
+    If you only send emails from server-side code and never from the client, you can disable the endpoint:
+    
+    ```typescript server/api/some-action.post.ts
+    import { sendEmail } from '#imports'
+    
+    export default defineEventHandler(async (event) => {
+      // Your custom server logic
+      await sendEmail({
+        from: 'hello@example.com',
+        to: 'user@example.com',
+        subject: 'Welcome',
+        html: '<h1>Welcome!</h1>'
+      })
+    })
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Endpoint Implementation
+
+The auto-generated endpoint is implemented as follows:
+
+```typescript
+import { defineEventHandler, readBody, createError } from 'h3'
+import { sendEmail, type SendEmailOptions } from '../../utils/lettermint'
+
+export default defineEventHandler(async (event) => {
+  try {
+    const body = await readBody<SendEmailOptions>(event)
+
+    // Validate required fields
+    if (!body.from) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Missing required field: from',
+      })
+    }
+
+    if (!body.to) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Missing required field: to',
+      })
+    }
+
+    if (!body.subject) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Missing required field: subject',
+      })
+    }
+
+    if (!body.text && !body.html) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Either text or html content is required',
+      })
+    }
+
+    // Send the email
+    const result = await sendEmail(body)
+
+    return {
+      success: true,
+      messageId: result.message_id,
+      status: result.status,
+    }
+  }
+  catch (error: unknown) {
+    // Comprehensive error handling...
+  }
+})
+```
+
+## Creating a Custom Endpoint
+
+If you disable the auto-endpoint and still want to use the `useLettermint()` composable, create your own endpoint at the same path:
+
+<Steps>
+  <Step title="Disable auto-endpoint">
+    ```typescript nuxt.config.ts
+    export default defineNuxtConfig({
+      modules: ['nuxt-lettermint'],
+      lettermint: {
+        autoEndpoint: false
+      }
+    })
+    ```
+  </Step>
+  
+  <Step title="Create custom endpoint">
+    Create a file at `server/api/lettermint/send.post.ts`:
+    
+    ```typescript server/api/lettermint/send.post.ts
+    import { sendEmail } from '#imports'
+    import { defineEventHandler, readBody } from 'h3'
+    
+    export default defineEventHandler(async (event) => {
+      const body = await readBody(event)
+      
+      // Add your custom logic here
+      console.log('Sending email:', body.subject)
+      
+      // Use the sendEmail utility
+      return await sendEmail(body)
+    })
+    ```
+  </Step>
+  
+  <Step title="Use the composable">
+    The `useLettermint()` composable will now use your custom endpoint:
+    
+    ```vue
+    <script setup>
+    const { send } = useLettermint()
+    
+    await send({
+      from: 'sender@example.com',
+      to: 'recipient@example.com',
+      subject: 'Hello',
+      html: '<p>Hello World</p>'
+    })
+    </script>
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  You can create custom endpoints at different paths (e.g., `/api/custom-send`), but you'll need to call them directly using `$fetch` instead of using the `useLettermint()` composable.
+</Note>
+
+## Impact on Client-Side Usage
+
+### With Auto-Endpoint Enabled (Default)
+
+```vue
+<script setup>
+// ✅ Works out of the box
+const { send, sending, error } = useLettermint()
+
+await send({
+  from: 'sender@example.com',
+  to: 'recipient@example.com',
+  subject: 'Hello',
+  html: '<h1>Hello</h1>'
+})
+</script>
+```
+
+### With Auto-Endpoint Disabled
+
+```vue
+<script setup>
+// ❌ Won't work unless you create a custom endpoint at /api/lettermint/send
+const { send } = useLettermint()
+
+// ✅ Alternative: Use $fetch with your custom endpoint
+const result = await $fetch('/api/custom-send', {
+  method: 'POST',
+  body: {
+    from: 'sender@example.com',
+    to: 'recipient@example.com',
+    subject: 'Hello',
+    html: '<h1>Hello</h1>'
+  }
+})
+</script>
+```
+
+## Server-Side Usage
+
+<Note>
+  Server-side email sending with `sendEmail()` works regardless of the `autoEndpoint` setting. The auto-endpoint only affects client-side usage through the `useLettermint()` composable.
+</Note>
+
+```typescript server/api/welcome.post.ts
+import { sendEmail } from '#imports'
+
+export default defineEventHandler(async () => {
+  // ✅ Always works, regardless of autoEndpoint setting
+  return await sendEmail({
+    from: 'hello@example.com',
+    to: 'user@example.com',
+    subject: 'Welcome',
+    html: '<h1>Welcome!</h1>'
+  })
+})
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Client-Side Usage" icon="browser" href="/guides/client-side">
+    Learn how to send emails from the client using useLettermint()
+  </Card>
+  <Card title="Server-Side Usage" icon="server" href="/guides/server-side">
+    Send emails from server-side code and API routes
+  </Card>
+</CardGroup>

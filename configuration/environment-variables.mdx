@@ -1,0 +1,205 @@
+---
+title: Environment variables
+description: Configure Nuxt Lettermint using environment variables
+---
+
+## Overview
+
+The recommended way to configure the Nuxt Lettermint module is through environment variables. This approach keeps sensitive credentials secure and makes it easy to use different API keys across development, staging, and production environments.
+
+## Available Environment Variables
+
+<ParamField path="NUXT_LETTERMINT_API_KEY" type="string" required>
+  Your Lettermint API key for authenticating with the email service.
+  
+  This is the primary configuration option for the module. When set, the module will automatically use this API key for all email operations.
+</ParamField>
+
+## Setting Up Environment Variables
+
+### Local Development
+
+Create a `.env` file in your project root:
+
+```bash .env
+NUXT_LETTERMINT_API_KEY=your-lettermint-api-key
+```
+
+<Note>
+  Nuxt automatically loads environment variables from `.env` files. Make sure your `.env` file is in your project root directory.
+</Note>
+
+### Production Deployment
+
+For production environments, set the environment variable through your hosting platform:
+
+<CodeGroup>
+
+```bash Vercel
+# Add to your Vercel project settings
+NUXT_LETTERMINT_API_KEY=your-production-api-key
+```
+
+```bash Netlify
+# Add to your Netlify site settings
+NUXT_LETTERMINT_API_KEY=your-production-api-key
+```
+
+```bash Docker
+# In your docker-compose.yml
+environment:
+  - NUXT_LETTERMINT_API_KEY=your-api-key
+```
+
+```bash Railway/Render
+# Add to your service environment variables
+NUXT_LETTERMINT_API_KEY=your-production-api-key
+```
+
+</CodeGroup>
+
+## Getting Your API Key
+
+To obtain your Lettermint API key:
+
+1. Visit the [Lettermint Dashboard](https://dash.lettermint.co/projects)
+2. Select your project from the list
+3. Navigate to the API settings or tokens section
+4. Copy your API token
+
+<Note>
+  If you don't have a Lettermint account yet, sign up at [lettermint.co](https://lettermint.co) to get started.
+</Note>
+
+## Configuration Priority
+
+When both an environment variable and a config option are provided, the module follows this priority order:
+
+1. **Direct config value** in `nuxt.config.ts` (`lettermint.apiKey`)
+2. **Environment variable** (`NUXT_LETTERMINT_API_KEY`)
+3. **Empty string** (default fallback)
+
+Here's how the module resolves the API key:
+
+```typescript
+const runtimeConfig = {
+  apiKey: options.apiKey || process.env.NUXT_LETTERMINT_API_KEY || '',
+}
+```
+
+## Complete Example
+
+<Steps>
+  <Step title="Create .env file">
+    Create a `.env` file in your project root:
+    
+    ```bash .env
+    NUXT_LETTERMINT_API_KEY=lm_1234567890abcdef
+    ```
+  </Step>
+  
+  <Step title="Configure Nuxt">
+    Add the module to your `nuxt.config.ts`:
+    
+    ```typescript nuxt.config.ts
+    export default defineNuxtConfig({
+      modules: ['nuxt-lettermint'],
+      lettermint: {
+        // API key is automatically loaded from environment
+      }
+    })
+    ```
+  </Step>
+  
+  <Step title="Add to .gitignore">
+    Ensure your `.env` file is in `.gitignore`:
+    
+    ```bash .gitignore
+    # Environment variables
+    .env
+    .env.*
+    !.env.example
+    ```
+  </Step>
+  
+  <Step title="Create .env.example">
+    Create a template for other developers:
+    
+    ```bash .env.example
+    # Get your API key from https://dash.lettermint.co/projects
+    NUXT_LETTERMINT_API_KEY=
+    ```
+  </Step>
+</Steps>
+
+## Security Best Practices
+
+<Warning>
+  **Never commit your API keys to version control!** Always use environment variables for sensitive credentials.
+</Warning>
+
+Follow these security guidelines:
+
+<AccordionGroup>
+  <Accordion title="Use .env files for local development">
+    Store your API keys in a `.env` file and add it to `.gitignore`. This prevents accidentally committing sensitive data.
+  </Accordion>
+  
+  <Accordion title="Use different keys for different environments">
+    Create separate API keys for development, staging, and production. This allows you to rotate keys without affecting other environments.
+  </Accordion>
+  
+  <Accordion title="Never hardcode API keys">
+    Avoid putting API keys directly in your `nuxt.config.ts` or source code. Always use environment variables.
+    
+    ```typescript ❌ Bad
+    lettermint: {
+      apiKey: 'lm_1234567890abcdef' // Never do this!
+    }
+    ```
+    
+    ```typescript ✅ Good
+    lettermint: {
+      // API key loaded from NUXT_LETTERMINT_API_KEY
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Restrict API key permissions">
+    In your Lettermint dashboard, configure API keys with the minimum required permissions for their use case.
+  </Accordion>
+  
+  <Accordion title="Rotate keys regularly">
+    Periodically rotate your API keys, especially if you suspect they may have been exposed.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="API key not being detected">
+    Make sure:
+    - Your `.env` file is in the project root
+    - The variable name is exactly `NUXT_LETTERMINT_API_KEY`
+    - You've restarted your Nuxt development server after creating/modifying the `.env` file
+  </Accordion>
+  
+  <Accordion title="Different key needed per environment">
+    Use `.env.development` and `.env.production` files, or configure environment variables directly in your hosting platform.
+  </Accordion>
+  
+  <Accordion title="Testing without a real API key">
+    For testing, you can use Lettermint's test email address `ok@testing.lettermint.co` as the recipient with a valid API key.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration Setup" icon="gear" href="/configuration/setup">
+    Learn about all available configuration options
+  </Card>
+  <Card title="Auto-generated Endpoint" icon="webhook" href="/configuration/auto-endpoint">
+    Configure the auto-generated API endpoint
+  </Card>
+</CardGroup>

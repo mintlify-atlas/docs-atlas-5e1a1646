@@ -1,80 +1,339 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get started with Nuxt Lettermint in minutes
 ---
 
-## Get started in three steps
+## Prerequisites
 
-Get your documentation site running locally and make your first customization.
+Before you begin, make sure you have:
 
-### Step 1: Set up your local environment
+- Completed the [installation](/installation) steps
+- Configured your Lettermint API key
+- A running Nuxt 3 or Nuxt 4 project
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+## Send Your First Email
 
-### Step 2: Deploy your changes
+<Steps>
+  <Step title="Choose your approach">
+    Nuxt Lettermint supports both client-side and server-side email sending. Choose the approach that best fits your use case:
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    - **Client-side**: Use the `useLettermint()` composable in your Vue components
+    - **Server-side**: Use the `sendEmail()` function in your API routes
+  </Step>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+  <Step title="Client-side example">
+    Use the `useLettermint()` composable in your Vue components or pages:
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    ```vue app.vue
+    <script setup>
+    const { send, sending, error, lastMessageId } = useLettermint()
 
-### Step 3: Go live
+    const sendTestEmail = async () => {
+      const result = await send({
+        from: 'demo@lettermint.co',
+        to: 'ok@testing.lettermint.co',
+        subject: 'Test Email from Nuxt Lettermint Module',
+        text: 'This is a test email sent from the Nuxt Lettermint module.',
+        html: '<h1>Test Email</h1><p>This is a <strong>test email</strong> sent from the Nuxt Lettermint module.</p>',
+        tags: ['nuxt']
+      })
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+      if (result.success) {
+        console.log('Email sent successfully!', result.messageId)
+      }
+    }
+    </script>
 
-## Next steps
+    <template>
+      <div>
+        <button @click="sendTestEmail" :disabled="sending">
+          {{ sending ? 'Sending...' : 'Send Email' }}
+        </button>
+        <p v-if="error" class="error">Error: {{ error }}</p>
+        <p v-if="lastMessageId" class="success">Message ID: {{ lastMessageId }}</p>
+      </div>
+    </template>
+    ```
 
-Now that you have your docs running, explore these key features:
+    <Tip>
+      The `useLettermint()` composable provides reactive state for `sending`, `error`, and `lastMessageId` to easily track the email sending status.
+    </Tip>
+  </Step>
+
+  <Step title="Server-side example">
+    Use the `sendEmail()` function in your server API routes:
+
+    ```typescript server/api/send-welcome.post.ts
+    import { sendEmail } from '#imports'
+
+    export default defineEventHandler(async () => {
+      try {
+        const result = await sendEmail({
+          from: 'hello@example.com',
+          to: 'ok@testing.lettermint.co',
+          subject: 'Welcome',
+          html: '<h1>Welcome!</h1>',
+          tags: ['welcome']
+        })
+
+        return {
+          success: true,
+          messageId: result.message_id,
+          status: result.status
+        }
+      }
+      catch (error) {
+        return {
+          success: false,
+          error: (error as Error).message
+        }
+      }
+    })
+    ```
+
+    <Note>
+      Server-side email sending is more secure as it keeps your API key hidden from the client.
+    </Note>
+  </Step>
+</Steps>
+
+## Complete Working Example
+
+Here's a full example from the playground demonstrating both client-side and server-side email sending:
+
+<Tabs>
+  <Tab title="Client-Side Component">
+    ```vue playground/app.vue
+    <script setup>
+    import { ref } from 'vue'
+
+    const { send, sending, error, lastMessageId } = useLettermint()
+
+    const emailForm = ref({
+      from: 'demo@lettermint.co',
+      to: 'ok@testing.lettermint.co',
+      subject: 'Test Email from Nuxt Lettermint Module',
+      text: 'This is a test email sent from the Nuxt Lettermint module playground.',
+      html: '<h1>Test Email</h1><p>This is a <strong>test email</strong> sent from the Nuxt Lettermint module.</p>',
+      tag: 'nuxt'
+    })
+
+    const successMessage = ref('')
+
+    const sendTestEmail = async () => {
+      successMessage.value = ''
+
+      const emailData = {
+        from: emailForm.value.from,
+        to: emailForm.value.to,
+        subject: emailForm.value.subject,
+        text: emailForm.value.text,
+        html: emailForm.value.html
+      }
+
+      if (emailForm.value.tag && emailForm.value.tag.trim()) {
+        emailData.tags = [emailForm.value.tag.trim()]
+      }
+
+      const result = await send(emailData)
+
+      if (result.success) {
+        successMessage.value = `Email sent successfully! Message ID: ${result.messageId}`
+      }
+    }
+    </script>
+
+    <template>
+      <div>
+        <h1>Send Email Demo</h1>
+        <button @click="sendTestEmail" :disabled="sending">
+          {{ sending ? 'Sending...' : 'Send Email' }}
+        </button>
+        <p v-if="error" class="error">Error: {{ error }}</p>
+        <p v-if="successMessage" class="success">{{ successMessage }}</p>
+      </div>
+    </template>
+    ```
+  </Tab>
+  <Tab title="Server-Side API Route">
+    ```typescript playground/server/api/server-email-demo.ts
+    import { defineEventHandler } from 'h3'
+    import { sendEmail } from '#imports'
+
+    export default defineEventHandler(async () => {
+      try {
+        const result = await sendEmail({
+          from: 'demo@lettermint.co',
+          to: 'ok@testing.lettermint.co',
+          subject: 'Server-side Email from Nuxt Lettermint',
+          text: 'This email was sent directly from the server using the Lettermint SDK.',
+          html: '<h2>Server-side Email</h2><p>This email was sent directly from the server using the <strong>Lettermint SDK</strong>.</p>',
+          tags: ['nuxt']
+        })
+
+        return {
+          success: true,
+          message: 'Email sent from server',
+          messageId: result.message_id,
+          status: result.status
+        }
+      }
+      catch (error: unknown) {
+        const err = error as any
+        let errorMessage = 'Failed to send email from server'
+
+        if (err?.responseBody?.message) {
+          errorMessage = err.responseBody.message
+        }
+        else if (err?.message) {
+          errorMessage = err.message
+        }
+
+        return {
+          success: false,
+          error: errorMessage
+        }
+      }
+    })
+    ```
+  </Tab>
+</Tabs>
+
+## Email Options
+
+Both `send()` and `sendEmail()` accept the following options:
+
+<ParamField path="from" type="string" required>
+  The sender's email address
+</ParamField>
+
+<ParamField path="to" type="string | string[]" required>
+  The recipient's email address(es)
+</ParamField>
+
+<ParamField path="subject" type="string" required>
+  The email subject line
+</ParamField>
+
+<ParamField path="text" type="string">
+  Plain text version of the email
+</ParamField>
+
+<ParamField path="html" type="string">
+  HTML version of the email
+</ParamField>
+
+<ParamField path="cc" type="string | string[]">
+  CC recipients
+</ParamField>
+
+<ParamField path="bcc" type="string | string[]">
+  BCC recipients
+</ParamField>
+
+<ParamField path="replyTo" type="string | string[]">
+  Reply-to email address(es)
+</ParamField>
+
+<ParamField path="headers" type="Record<string, string>">
+  Custom email headers
+</ParamField>
+
+<ParamField path="metadata" type="Record<string, unknown>">
+  Custom metadata to attach to the email
+</ParamField>
+
+<ParamField path="tags" type="string[]">
+  Tags for categorizing and tracking emails
+</ParamField>
+
+<ParamField path="attachments" type="Array<{filename: string, content: string | Buffer, contentType?: string}>">
+  Email attachments
+</ParamField>
+
+## Advanced Example
+
+Send an email with all available options:
+
+```typescript server/api/advanced-email.post.ts
+import { sendEmail } from '#imports'
+
+export default defineEventHandler(async () => {
+  try {
+    const result = await sendEmail({
+      from: 'nuxt@lettermint.dev',
+      to: 'ok@testing.lettermint.co',
+      cc: 'ok@testing.lettermint.co',
+      bcc: 'ok@testing.lettermint.co',
+      replyTo: 'ok@testing.lettermint.co',
+      subject: 'Test Full Options',
+      text: 'Plain text version',
+      html: '<h1>HTML version</h1>',
+      headers: {
+        'X-Custom-Header': 'custom-value'
+      },
+      metadata: {
+        userId: '12345',
+        campaign: 'test-campaign'
+      },
+      tags: ['test', 'full-options'],
+      attachments: [
+        {
+          filename: 'test.txt',
+          content: 'Test attachment content'
+        }
+      ]
+    })
+
+    return {
+      success: true,
+      result
+    }
+  }
+  catch (error) {
+    return {
+      success: false,
+      error: (error as Error).message
+    }
+  }
+})
+```
+
+## Testing Your Integration
+
+<Tip>
+  Use `ok@testing.lettermint.co` as the recipient for testing. This is a special testing address provided by Lettermint that accepts all emails without actually sending them.
+</Tip>
+
+## Next Steps
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card
+    title="API Reference"
+    icon="code"
+    href="/api/use-lettermint"
+  >
+    Explore the complete API documentation
+  </Card>
+  <Card
+    title="Advanced Usage"
+    icon="graduation-cap"
+    href="/guides/advanced-usage"
+  >
+    Learn advanced patterns and best practices
+  </Card>
+  <Card
+    title="Lettermint Docs"
+    icon="book"
+    href="https://docs.lettermint.co"
+  >
+    Read the Lettermint platform documentation
+  </Card>
+  <Card
+    title="Examples"
+    icon="code-branch"
+    href="https://github.com/lettermint/nuxt-lettermint/tree/main/playground"
+  >
+    View more examples on GitHub
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

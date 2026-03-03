@@ -1,0 +1,377 @@
+---
+title: Advanced usage
+description: Advanced email sending patterns and features
+---
+
+The Nuxt Lettermint module provides access to the Lettermint SDK's fluent API for advanced use cases and more control over email composition.
+
+## Fluent API overview
+
+The fluent API allows you to chain methods to build your email step by step. This is useful when you need more control over the email construction or want to conditionally add properties.
+
+## Server-side fluent API
+
+Access the Lettermint SDK directly on the server using `useLettermint()`:
+
+```typescript server/api/advanced-send.ts
+import { useLettermint } from '#imports'
+
+export default defineEventHandler(async () => {
+  const lettermint = useLettermint()
+
+  const result = await lettermint.email
+    .from('nuxt@lettermint.dev')
+    .to('ok@testing.lettermint.co')
+    .subject('Test SDK Email')
+    .html('<h1>Hello from Lettermint SDK</h1>')
+    .tag('sdk-test')
+    .send()
+
+  return {
+    success: true,
+    result,
+  }
+})
+```
+
+<Note>
+The server-side `useLettermint()` returns the Lettermint SDK instance, not the client composable. These are two different functions with the same name but different contexts.
+</Note>
+
+## Available fluent methods
+
+The Lettermint SDK provides the following chainable methods:
+
+| Method | Description | Example |
+|--------|-------------|----------|
+| `.from(email)` | Set sender email | `.from('sender@example.com')` |
+| `.to(email)` | Add recipient | `.to('user@example.com')` |
+| `.cc(email)` | Add CC recipient | `.cc('manager@example.com')` |
+| `.bcc(email)` | Add BCC recipient | `.bcc('archive@example.com')` |
+| `.replyTo(email)` | Set reply-to address | `.replyTo('support@example.com')` |
+| `.subject(text)` | Set email subject | `.subject('Welcome!')` |
+| `.text(content)` | Set plain text content | `.text('Hello world')` |
+| `.html(content)` | Set HTML content | `.html('<h1>Hello</h1>')` |
+| `.tag(name)` | Add a tag | `.tag('welcome')` |
+| `.headers(obj)` | Set custom headers | `.headers({ 'X-Custom': 'value' })` |
+| `.metadata(obj)` | Set metadata | `.metadata({ userId: '123' })` |
+| `.attach(filename, content)` | Add attachment | `.attach('file.pdf', base64Data)` |
+| `.send()` | Send the email | `.send()` |
+
+<Tip>
+All methods except `.send()` return the email builder, allowing you to chain multiple calls.
+</Tip>
+
+## Conditional email building
+
+The fluent API is perfect for building emails conditionally:
+
+```typescript server/api/conditional-email.ts
+import { useLettermint } from '#imports'
+
+export default defineEventHandler(async (event) => {
+  const lettermint = useLettermint()
+  const { user, includeCopy, urgentFlag } = await readBody(event)
+
+  // Start building the email
+  let email = lettermint.email
+    .from('app@example.com')
+    .to(user.email)
+    .subject('Your Report')
+    .html('<h1>Report Ready</h1>')
+
+  // Conditionally add CC
+  if (includeCopy && user.managerEmail) {
+    email = email.cc(user.managerEmail)
+  }
+
+  // Conditionally add tags
+  if (urgentFlag) {
+    email = email.tag('urgent')
+  }
+  email = email.tag('report')
+
+  // Conditionally add metadata
+  if (user.id) {
+    email = email.metadata({
+      userId: user.id,
+      reportType: 'monthly'
+    })
+  }
+
+  return await email.send()
+})
+```
+
+## Multiple recipients with fluent API
+
+You can call recipient methods multiple times to add multiple recipients:
+
+```typescript server/api/multi-recipient.ts
+import { useLettermint } from '#imports'
+
+export default defineEventHandler(async () => {
+  const lettermint = useLettermint()
+  const recipients = ['user1@example.com', 'user2@example.com', 'user3@example.com']
+
+  // Start with base email
+  let email = lettermint.email
+    .from('newsletter@example.com')
+    .subject('Team Update')
+    .html('<h1>Important Update</h1>')
+
+  // Add all recipients
+  recipients.forEach(recipient => {
+    email = email.to(recipient)
+  })
+
+  return await email.send()
+})
+```
+
+## Multiple tags
+
+Add multiple tags by chaining `.tag()` calls:
+
+```typescript server/api/multi-tag.ts
+import { useLettermint } from '#imports'
+
+export default defineEventHandler(async () => {
+  const lettermint = useLettermint()
+
+  return await lettermint.email
+    .from('marketing@example.com')
+    .to('customer@example.com')
+    .subject('Spring Sale')
+    .html('<h1>50% Off Everything</h1>')
+    .tag('campaign')
+    .tag('promotional')
+    .tag('spring-2024')
+    .tag('sale')
+    .send()
+})
+```
+
+## Working with attachments
+
+The `.attach()` method accepts a filename and base64-encoded content:
+
+```typescript server/api/send-attachment.ts
+import { useLettermint } from '#imports'
+import { readFile } from 'fs/promises'
+
+export default defineEventHandler(async () => {
+  const lettermint = useLettermint()
+
+  // Read and encode file
+  const fileBuffer = await readFile('./report.pdf')
+  const base64Content = fileBuffer.toString('base64')
+
+  return await lettermint.email
+    .from('reports@example.com')
+    .to('manager@example.com')
+    .subject('Monthly Report')
+    .html('<h1>Monthly Report Attached</h1>')
+    .attach('report.pdf', base64Content)
+    .send()
+})
+```
+
+## Custom headers
+
+Add custom headers for tracking, routing, or other purposes:
+
+```typescript server/api/custom-headers.ts
+import { useLettermint } from '#imports'
+
+export default defineEventHandler(async () => {
+  const lettermint = useLettermint()
+
+  return await lettermint.email
+    .from('app@example.com')
+    .to('user@example.com')
+    .subject('Welcome')
+    .html('<h1>Welcome to our app</h1>')
+    .headers({
+      'X-Campaign-ID': 'welcome-2024',
+      'X-Priority': 'high',
+      'X-Email-Type': 'transactional'
+    })
+    .send()
+})
+```
+
+## Metadata for tracking
+
+Metadata is not sent in the email but stored by Lettermint for tracking and analytics:
+
+```typescript server/api/tracked-email.ts
+import { useLettermint } from '#imports'
+
+export default defineEventHandler(async () => {
+  const lettermint = useLettermint()
+
+  return await lettermint.email
+    .from('app@example.com')
+    .to('user@example.com')
+    .subject('Password Reset')
+    .html('<h1>Reset your password</h1>')
+    .metadata({
+      userId: '12345',
+      action: 'password-reset',
+      ipAddress: '192.168.1.1',
+      userAgent: 'Mozilla/5.0...',
+      timestamp: new Date().toISOString()
+    })
+    .tag('security')
+    .send()
+})
+```
+
+<Info>
+Metadata values must be strings. The module automatically converts objects to strings when using `sendEmail()`, but with the fluent API you should ensure values are strings.
+</Info>
+
+## How `sendEmail()` uses the fluent API
+
+The `sendEmail()` function is implemented using the fluent API. Here's how it works internally:
+
+```typescript src/runtime/server/utils/lettermint.ts
+export async function sendEmail(options: SendEmailOptions) {
+  const lettermint = useLettermint()
+
+  let email = lettermint.email
+    .from(options.from)
+    .subject(options.subject)
+
+  // Add recipients (handling arrays)
+  if (Array.isArray(options.to)) {
+    options.to.forEach((recipient) => {
+      email = email.to(recipient)
+    })
+  }
+  else {
+    email = email.to(options.to)
+  }
+
+  // Add optional fields
+  if (options.text) email = email.text(options.text)
+  if (options.html) email = email.html(options.html)
+
+  // Handle CC (with array support)
+  if (options.cc) {
+    if (Array.isArray(options.cc)) {
+      options.cc.forEach((recipient) => {
+        email = email.cc(recipient)
+      })
+    }
+    else {
+      email = email.cc(options.cc)
+    }
+  }
+
+  // Handle BCC (with array support)
+  if (options.bcc) {
+    if (Array.isArray(options.bcc)) {
+      options.bcc.forEach((recipient) => {
+        email = email.bcc(recipient)
+      })
+    }
+    else {
+      email = email.bcc(options.bcc)
+    }
+  }
+
+  // Add tags
+  if (options.tags) {
+    options.tags.forEach((tag) => {
+      email = email.tag(tag)
+    })
+  }
+
+  // Add headers
+  if (options.headers) {
+    email = email.headers(options.headers)
+  }
+
+  // Add metadata
+  if (options.metadata) {
+    email = email.metadata(options.metadata as Record<string, string>)
+  }
+
+  // Add attachments
+  if (options.attachments) {
+    options.attachments.forEach((attachment) => {
+      email = email.attach(
+        attachment.filename,
+        typeof attachment.content === 'string' 
+          ? attachment.content 
+          : attachment.content.toString('base64'),
+      )
+    })
+  }
+
+  return await email.send()
+}
+```
+
+## When to use fluent API vs `sendEmail()`
+
+Use **`sendEmail()`** when:
+- You have all email data upfront as an object
+- You're working with form submissions or API requests
+- You want simple, straightforward email sending
+- You're migrating from another email service
+
+Use **fluent API** when:
+- You need to build emails conditionally
+- You want more explicit control over email composition
+- You're working with complex email logic
+- You prefer a more expressive, chainable syntax
+
+<CardGroup cols={2}>
+
+<Card title="sendEmail() approach" icon="square-check">
+  ```typescript
+  const result = await sendEmail({
+    from: 'app@example.com',
+    to: recipients,
+    subject: 'Update',
+    html: content,
+    tags: ['newsletter']
+  })
+  ```
+  Best for: Simple, data-driven emails
+</Card>
+
+<Card title="Fluent API approach" icon="wand-magic-sparkles">
+  ```typescript
+  let email = lettermint.email
+    .from('app@example.com')
+    .subject('Update')
+  
+  recipients.forEach(r => {
+    email = email.to(r)
+  })
+  
+  if (isUrgent) {
+    email = email.tag('urgent')
+  }
+  
+  await email.send()
+  ```
+  Best for: Complex, conditional logic
+</Card>
+
+</CardGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Custom endpoints" icon="code" href="/guides/custom-endpoints">
+    Create custom API endpoints with additional logic
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration/setup">
+    Learn about all configuration options
+  </Card>
+</CardGroup>

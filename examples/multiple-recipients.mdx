@@ -1,0 +1,181 @@
+---
+title: Multiple recipients
+description: Send emails to multiple recipients with CC and BCC
+---
+
+Send emails to multiple recipients using arrays for the `to`, `cc`, and `bcc` fields.
+
+## Multiple recipients
+
+You can specify multiple recipients by passing an array of email addresses:
+
+```typescript
+import { sendEmail } from '#imports'
+
+export default defineEventHandler(async () => {
+  const result = await sendEmail({
+    from: 'nuxt@lettermint.dev',
+    to: ['ok@testing.lettermint.co', 'softbounce@testing.lettermint.co'],
+    subject: 'Test Multiple Recipients',
+    text: 'Testing multiple recipients'
+  })
+
+  return { success: true, result }
+})
+```
+
+## CC and BCC recipients
+
+Include CC (carbon copy) and BCC (blind carbon copy) recipients:
+
+```typescript
+import { sendEmail } from '#imports'
+
+export default defineEventHandler(async () => {
+  const result = await sendEmail({
+    from: 'nuxt@lettermint.dev',
+    to: ['ok@testing.lettermint.co', 'softbounce@testing.lettermint.co'],
+    cc: ['ok@testing.lettermint.co', 'softbounce@testing.lettermint.co'],
+    bcc: 'ok@testing.lettermint.co',
+    subject: 'Test Multiple Recipients',
+    text: 'Testing multiple recipients'
+  })
+
+  return { success: true, result }
+})
+```
+
+<Info>
+  You can use either a single email string or an array of email strings for `to`, `cc`, and `bcc` fields.
+</Info>
+
+## Reply-To configuration
+
+Set custom reply-to addresses for your emails:
+
+```typescript
+import { sendEmail } from '#imports'
+
+export default defineEventHandler(async () => {
+  const result = await sendEmail({
+    from: 'nuxt@lettermint.dev',
+    to: 'ok@testing.lettermint.co',
+    replyTo: 'support@example.com',
+    subject: 'Test Email',
+    html: '<h1>Hello World</h1>'
+  })
+
+  return { success: true, result }
+})
+```
+
+## Named email addresses
+
+Use objects with `email` and `name` fields for more descriptive recipients:
+
+<Tabs>
+  <Tab title="Single recipient">
+    ```typescript
+    import { sendEmail } from '#imports'
+
+    export default defineEventHandler(async () => {
+      const result = await sendEmail({
+        from: {
+          email: 'nuxt@lettermint.dev',
+          name: 'Nuxt Team'
+        },
+        to: {
+          email: 'ok@testing.lettermint.co',
+          name: 'Test User'
+        },
+        subject: 'Welcome!',
+        html: '<h1>Welcome to our service</h1>'
+      })
+
+      return { success: true, result }
+    })
+    ```
+  </Tab>
+
+  <Tab title="Multiple recipients">
+    ```typescript
+    import { sendEmail } from '#imports'
+
+    export default defineEventHandler(async () => {
+      const result = await sendEmail({
+        from: {
+          email: 'nuxt@lettermint.dev',
+          name: 'Nuxt Team'
+        },
+        to: [
+          { email: 'user1@example.com', name: 'User One' },
+          { email: 'user2@example.com', name: 'User Two' }
+        ],
+        cc: [
+          { email: 'manager@example.com', name: 'Manager' }
+        ],
+        subject: 'Team Update',
+        html: '<h1>Important team announcement</h1>'
+      })
+
+      return { success: true, result }
+    })
+    ```
+  </Tab>
+
+  <Tab title="Client-side">
+    ```vue
+    <script setup>
+    const { send } = useLettermint()
+
+    await send({
+      from: {
+        email: 'sender@example.com',
+        name: 'Sender Name'
+      },
+      to: [
+        { email: 'recipient1@example.com', name: 'Recipient One' },
+        { email: 'recipient2@example.com', name: 'Recipient Two' }
+      ],
+      subject: 'Newsletter',
+      html: '<h1>Monthly Newsletter</h1>'
+    })
+    </script>
+    ```
+  </Tab>
+</Tabs>
+
+## Type definition
+
+The email address types support both string and object formats:
+
+```typescript
+interface LettermintEmailAddress {
+  email: string
+  name?: string
+}
+
+interface LettermintEmailOptions {
+  from: string | LettermintEmailAddress
+  to: string | string[] | LettermintEmailAddress | LettermintEmailAddress[]
+  cc?: string | string[] | LettermintEmailAddress | LettermintEmailAddress[]
+  bcc?: string | string[] | LettermintEmailAddress | LettermintEmailAddress[]
+  replyTo?: string | string[] | LettermintEmailAddress | LettermintEmailAddress[]
+  // ... other fields
+}
+```
+
+<Note>
+  When using named addresses, the name will appear in the recipient's email client (e.g., "Nuxt Team \<nuxt@lettermint.dev\>").
+</Note>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Attachments" icon="paperclip" href="/examples/attachments">
+    Add file attachments to your emails
+  </Card>
+  <Card title="Tags and metadata" icon="tag" href="/examples/tags-metadata">
+    Organize and track emails with tags and metadata
+  </Card>
+</CardGroup>

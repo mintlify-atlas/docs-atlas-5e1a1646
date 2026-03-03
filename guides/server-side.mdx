@@ -1,0 +1,380 @@
+---
+title: Server-side usage
+description: Send emails from server routes and API handlers
+---
+
+The Nuxt Lettermint module provides server-side utilities for sending emails directly from your API routes, server middleware, and Nitro handlers.
+
+## Basic usage
+
+Use the `sendEmail()` function in any server context:
+
+```typescript server/api/send.post.ts
+import { sendEmail } from '#imports'
+
+export default defineEventHandler(async () => {
+  return await sendEmail({
+    from: 'hello@example.com',
+    to: 'ok@testing.lettermint.co',
+    subject: 'Welcome',
+    html: '<h1>Welcome!</h1>',
+    tags: ['welcome']
+  })
+})
+```
+
+## The `sendEmail()` function
+
+The `sendEmail()` function is a convenience wrapper that handles email sending with all available options:
+
+```typescript
+import { sendEmail, type SendEmailOptions } from '#imports'
+
+const result = await sendEmail(options)
+```
+
+**Returns:**
+```typescript
+interface EmailResult {
+  message_id: string
+  status: string
+}
+```
+
+## Email options
+
+The `sendEmail()` function accepts comprehensive email options:
+
+```typescript
+interface SendEmailOptions {
+  from: string                    // Sender email address
+  to: string | string[]          // Recipient email address(es)
+  subject: string                // Email subject
+  text?: string                  // Plain text content
+  html?: string                  // HTML content
+  cc?: string | string[]         // CC recipients
+  bcc?: string | string[]        // BCC recipients
+  replyTo?: string | string[]    // Reply-to address(es)
+  headers?: Record<string, string>  // Custom headers
+  metadata?: Record<string, unknown> // Custom metadata
+  tags?: string[]                // Tags for categorization
+  attachments?: Array<{          // File attachments
+    filename: string
+    content: string | Buffer
+    contentType?: string
+  }>
+}
+```
+
+<Note>
+All options are validated before sending. Either `text` or `html` content is required.
+</Note>
+
+## Complete example
+
+Here's a real example from the module's playground showing a complete server route:
+
+```typescript server/api/server-email-demo.ts
+import { defineEventHandler } from 'h3'
+import { sendEmail } from '#imports'
+
+export default defineEventHandler(async () => {
+  try {
+    const result = await sendEmail({
+      from: 'demo@lettermint.co',
+      to: 'ok@testing.lettermint.co',
+      subject: 'Server-side Email from Nuxt Lettermint',
+      text: 'This email was sent directly from the server using the Lettermint SDK.',
+      html: '<h2>Server-side Email</h2><p>This email was sent directly from the server using the <strong>Lettermint SDK</strong>.</p>',
+      tags: ['nuxt'],
+    })
+
+    return {
+      success: true,
+      message: 'Email sent from server',
+      messageId: result.message_id,
+      status: result.status,
+    }
+  }
+  catch (error: unknown) {
+    console.error('Server email error:', error)
+
+    const err = error as any
+    let errorMessage = 'Failed to send email from server'
+
+    // Extract the actual validation message from Lettermint
+    if (err?.responseBody?.message) {
+      errorMessage = err.responseBody.message
+    }
+    else if (err?.message) {
+      errorMessage = err.message
+    }
+
+    return {
+      success: false,
+      error: errorMessage,
+    }
+  }
+})
+```
+
+## Advanced options
+
+The module supports all Lettermint email features. Here's an example with all available options:
+
+```typescript server/api/full-options.ts
+import { sendEmail } from '#imports'
+
+export default defineEventHandler(async () => {
+  const result = await sendEmail({
+    from: 'nuxt@lettermint.dev',
+    to: 'ok@testing.lettermint.co',
+    cc: 'ok@testing.lettermint.co',
+    bcc: 'ok@testing.lettermint.co',
+    replyTo: 'ok@testing.lettermint.co',
+    subject: 'Test Full Options',
+    text: 'Plain text version',
+    html: '<h1>HTML version</h1>',
+    headers: {
+      'X-Custom-Header': 'custom-value',
+    },
+    metadata: {
+      userId: '12345',
+      campaign: 'test-campaign',
+    },
+    tags: ['test', 'full-options'],
+    attachments: [
+      {
+        filename: 'test.txt',
+        content: 'Test attachment content',
+      },
+    ],
+  })
+
+  return {
+    success: true,
+    result,
+  }
+})
+```
+
+## Multiple recipients
+
+Send to multiple recipients by passing arrays:
+
+```typescript server/api/newsletter.post.ts
+import { sendEmail } from '#imports'
+
+export default defineEventHandler(async () => {
+  return await sendEmail({
+    from: 'newsletter@example.com',
+    to: ['user1@example.com', 'user2@example.com'],
+    cc: ['manager@example.com', 'admin@example.com'],
+    bcc: 'archive@example.com',
+    subject: 'Weekly Newsletter',
+    html: '<h1>This Week in Tech</h1>',
+    tags: ['newsletter', 'weekly']
+  })
+})
+```
+
+## Error handling
+
+Always wrap `sendEmail()` calls in try-catch blocks:
+
+<CodeGroup>
+
+```typescript Basic error handling
+import { sendEmail } from '#imports'
+import { createError } from 'h3'
+
+export default defineEventHandler(async () => {
+  try {
+    const result = await sendEmail({
+      from: 'app@example.com',
+      to: 'user@example.com',
+      subject: 'Hello',
+      html: '<h1>Hello</h1>'
+    })
+
+    return { success: true, messageId: result.message_id }
+  }
+  catch (error) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'Failed to send email'
+    })
+  }
+})
+```
+
+```typescript Detailed error handling
+import { sendEmail } from '#imports'
+import { createError } from 'h3'
+
+export default defineEventHandler(async () => {
+  try {
+    const result = await sendEmail({
+      from: 'app@example.com',
+      to: 'user@example.com',
+      subject: 'Hello',
+      html: '<h1>Hello</h1>'
+    })
+
+    return { success: true, messageId: result.message_id }
+  }
+  catch (error: unknown) {
+    const err = error as any
+    let errorMessage = 'Failed to send email'
+
+    // Extract Lettermint API error messages
+    if (err?.responseBody?.message) {
+      errorMessage = err.responseBody.message
+    }
+    else if (err?.message) {
+      errorMessage = err.message
+    }
+
+    throw createError({
+      statusCode: err?.statusCode || 500,
+      statusMessage: errorMessage
+    })
+  }
+})
+```
+
+</CodeGroup>
+
+<Warning>
+The Lettermint API returns detailed error messages for validation failures. Always extract and return these messages to help debug issues.
+</Warning>
+
+## Using with request data
+
+Combine with request body parsing for dynamic email sending:
+
+```typescript server/api/contact.post.ts
+import { defineEventHandler, readBody, createError } from 'h3'
+import { sendEmail } from '#imports'
+
+export default defineEventHandler(async (event) => {
+  const { name, email, message } = await readBody(event)
+
+  // Validate input
+  if (!name || !email || !message) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Missing required fields'
+    })
+  }
+
+  // Send email
+  const result = await sendEmail({
+    from: 'contact@example.com',
+    to: 'support@example.com',
+    replyTo: email,
+    subject: `Contact Form: ${name}`,
+    html: `
+      <h2>New Contact Form Submission</h2>
+      <p><strong>From:</strong> ${name} (${email})</p>
+      <p><strong>Message:</strong></p>
+      <p>${message}</p>
+    `,
+    metadata: {
+      source: 'contact-form',
+      userEmail: email
+    },
+    tags: ['contact-form']
+  })
+
+  return {
+    success: true,
+    messageId: result.message_id
+  }
+})
+```
+
+## File attachments
+
+Add attachments using base64-encoded content or Buffer:
+
+```typescript server/api/send-with-attachment.post.ts
+import { sendEmail } from '#imports'
+import { readFile } from 'fs/promises'
+
+export default defineEventHandler(async () => {
+  // Read file from disk
+  const fileBuffer = await readFile('./invoice.pdf')
+
+  return await sendEmail({
+    from: 'billing@example.com',
+    to: 'customer@example.com',
+    subject: 'Your Invoice',
+    html: '<h1>Invoice Attached</h1><p>Please find your invoice attached.</p>',
+    attachments: [
+      {
+        filename: 'invoice.pdf',
+        content: fileBuffer,
+        contentType: 'application/pdf'
+      }
+    ]
+  })
+})
+```
+
+<Tip>
+For base64-encoded strings, you can pass them directly as the `content` field without converting to Buffer.
+</Tip>
+
+## Custom headers and metadata
+
+Add custom headers and metadata for tracking and routing:
+
+```typescript server/api/campaign.post.ts
+import { sendEmail } from '#imports'
+
+export default defineEventHandler(async () => {
+  return await sendEmail({
+    from: 'marketing@example.com',
+    to: 'subscriber@example.com',
+    subject: 'Special Offer',
+    html: '<h1>Limited Time Offer</h1>',
+    headers: {
+      'X-Campaign-ID': 'spring-2024',
+      'X-Email-Type': 'promotional'
+    },
+    metadata: {
+      campaignId: 'spring-2024',
+      userId: '67890',
+      segmentId: 'premium-users',
+      timestamp: new Date().toISOString()
+    },
+    tags: ['campaign', 'promotional', 'spring-2024']
+  })
+})
+```
+
+## How it works
+
+The `sendEmail()` function:
+
+1. Retrieves the Lettermint SDK instance configured with your API key
+2. Converts your options into the Lettermint fluent API format
+3. Handles arrays for recipients, CC, BCC, and reply-to fields
+4. Sends the email via the Lettermint API
+5. Returns the message ID and status
+
+<Info>
+Your API key is securely accessed from runtime config and never exposed to the client.
+</Info>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Advanced usage" icon="wand-magic-sparkles" href="/guides/advanced-usage">
+    Use the fluent API for more control
+  </Card>
+  <Card title="Custom endpoints" icon="code" href="/guides/custom-endpoints">
+    Create custom API endpoints with additional logic
+  </Card>
+</CardGroup>

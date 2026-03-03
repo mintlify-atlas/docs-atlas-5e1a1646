@@ -1,0 +1,150 @@
+---
+title: Configuration setup
+description: Configure the Nuxt Lettermint module
+---
+
+## Module Configuration Interface
+
+The Nuxt Lettermint module accepts configuration options through the `lettermint` key in your `nuxt.config.ts` file. The module exposes the following TypeScript interface:
+
+```typescript
+export interface ModuleOptions {
+  apiKey?: string
+  autoEndpoint?: boolean
+}
+```
+
+## Configuration Options
+
+All configuration options are optional and can be set in your `nuxt.config.ts` file or through environment variables.
+
+<ParamField path="apiKey" type="string" default="undefined">
+  Your Lettermint API key for authenticating with the Lettermint email service.
+  
+  If not provided here, the module will automatically look for the `NUXT_LETTERMINT_API_KEY` environment variable.
+  
+  <Note>
+    It's recommended to use environment variables instead of hardcoding your API key in the config file. See [Environment Variables](/configuration/environment-variables) for more details.
+  </Note>
+</ParamField>
+
+<ParamField path="autoEndpoint" type="boolean" default="true">
+  Controls whether the module should automatically create the `/api/lettermint/send` endpoint.
+  
+  When enabled (default), the module creates a ready-to-use API endpoint for sending emails from the client side using the `useLettermint()` composable.
+  
+  Set to `false` if you want to create your own custom endpoints with additional logic. See [Auto-generated Endpoint](/configuration/auto-endpoint) for more details.
+</ParamField>
+
+## Basic Configuration
+
+Add the module to your Nuxt configuration:
+
+```typescript
+// nuxt.config.ts
+export default defineNuxtConfig({
+  modules: ['nuxt-lettermint']
+})
+```
+
+## Configuration with Options
+
+You can configure the module by adding a `lettermint` key to your config:
+
+<CodeGroup>
+
+```typescript With API Key
+// nuxt.config.ts
+export default defineNuxtConfig({
+  modules: ['nuxt-lettermint'],
+  lettermint: {
+    apiKey: 'your-api-key'
+  }
+})
+```
+
+```typescript With Environment Variable
+// nuxt.config.ts
+export default defineNuxtConfig({
+  modules: ['nuxt-lettermint'],
+  lettermint: {
+    apiKey: process.env.NUXT_LETTERMINT_API_KEY
+  }
+})
+```
+
+```typescript Full Configuration
+// nuxt.config.ts
+export default defineNuxtConfig({
+  modules: ['nuxt-lettermint'],
+  lettermint: {
+    apiKey: process.env.NUXT_LETTERMINT_API_KEY,
+    autoEndpoint: true
+  }
+})
+```
+
+```typescript Minimal (Recommended)
+// nuxt.config.ts
+export default defineNuxtConfig({
+  modules: ['nuxt-lettermint'],
+  lettermint: {
+    // API key is automatically loaded from NUXT_LETTERMINT_API_KEY
+  }
+})
+```
+
+</CodeGroup>
+
+## Default Values
+
+The module uses the following default values:
+
+| Option | Default Value | Source |
+|--------|--------------|--------|
+| `apiKey` | `''` (empty string) | Environment variable `NUXT_LETTERMINT_API_KEY` or configured value |
+| `autoEndpoint` | `true` | Module defaults |
+
+<Warning>
+  If no API key is provided through configuration or environment variables, the module will still load but email sending will fail. Make sure to configure your API key before attempting to send emails.
+</Warning>
+
+## Runtime Configuration
+
+The module automatically integrates with Nuxt's runtime configuration system. The API key is stored securely in the server-side runtime config:
+
+```typescript
+const runtimeConfig = {
+  apiKey: options.apiKey || process.env.NUXT_LETTERMINT_API_KEY || '',
+}
+```
+
+This ensures your API key is only available on the server side and never exposed to the client.
+
+## TypeScript Support
+
+The module provides full TypeScript support with type augmentation for Nuxt's schema:
+
+```typescript
+declare module '@nuxt/schema' {
+  interface RuntimeConfig {
+    lettermint: {
+      apiKey: string
+    }
+  }
+  interface PublicRuntimeConfig {
+    lettermint?: Record<string, never>
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Environment Variables" icon="key" href="/configuration/environment-variables">
+    Learn how to configure the module using environment variables
+  </Card>
+  <Card title="Auto-generated Endpoint" icon="webhook" href="/configuration/auto-endpoint">
+    Understand how the auto-generated API endpoint works
+  </Card>
+</CardGroup>

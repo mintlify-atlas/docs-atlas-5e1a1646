@@ -1,0 +1,329 @@
+---
+title: "useLettermint"
+description: "Client-side composable for sending emails"
+---
+
+## Overview
+
+The `useLettermint` composable provides a convenient way to send emails from your Nuxt application's client-side code. It returns reactive state and a `send` method that handles API communication with the Lettermint service.
+
+## Signature
+
+```typescript
+function useLettermint(): UseLettermintReturn
+```
+
+## Return Value
+
+The composable returns an object with the following properties and methods:
+
+<ResponseField name="send" type="(options: LettermintEmailOptions) => Promise<LettermintResponse>" required>
+  Async function to send an email. Returns a promise that resolves to a response object.
+</ResponseField>
+
+<ResponseField name="sending" type="Ref<boolean>" required>
+  Reactive boolean indicating whether an email is currently being sent.
+</ResponseField>
+
+<ResponseField name="error" type="Ref<string | null>" required>
+  Reactive string containing the last error message, or `null` if no error occurred.
+</ResponseField>
+
+<ResponseField name="lastMessageId" type="Ref<string | null>" required>
+  Reactive string containing the message ID of the last successfully sent email, or `null` if no email has been sent yet.
+</ResponseField>
+
+## Email Options
+
+### LettermintEmailOptions
+
+The `send` method accepts an options object with the following parameters:
+
+<ParamField path="from" type="string" required>
+  The sender's email address.
+  
+  ```typescript
+  from: 'hello@example.com'
+  ```
+</ParamField>
+
+<ParamField path="to" type="string | string[]" required>
+  The recipient's email address or an array of recipient addresses.
+  
+  ```typescript
+  to: 'user@example.com'
+  // or
+  to: ['user1@example.com', 'user2@example.com']
+  ```
+</ParamField>
+
+<ParamField path="subject" type="string" required>
+  The email subject line.
+  
+  ```typescript
+  subject: 'Welcome to our service'
+  ```
+</ParamField>
+
+<ParamField path="text" type="string">
+  Plain text content of the email.
+  
+  ```typescript
+  text: 'Thank you for signing up!'
+  ```
+</ParamField>
+
+<ParamField path="html" type="string">
+  HTML content of the email. If both `text` and `html` are provided, email clients will display the HTML version with text as a fallback.
+  
+  ```typescript
+  html: '<h1>Welcome!</h1><p>Thank you for signing up!</p>'
+  ```
+</ParamField>
+
+<ParamField path="cc" type="string | string[]">
+  Carbon copy recipient(s).
+  
+  ```typescript
+  cc: 'manager@example.com'
+  // or
+  cc: ['manager1@example.com', 'manager2@example.com']
+  ```
+</ParamField>
+
+<ParamField path="bcc" type="string | string[]">
+  Blind carbon copy recipient(s).
+  
+  ```typescript
+  bcc: 'archive@example.com'
+  ```
+</ParamField>
+
+<ParamField path="replyTo" type="string | string[]">
+  Reply-to address(es).
+  
+  ```typescript
+  replyTo: 'support@example.com'
+  ```
+</ParamField>
+
+<ParamField path="headers" type="Record<string, string>">
+  Custom email headers as key-value pairs.
+  
+  ```typescript
+  headers: {
+    'X-Custom-Header': 'value',
+    'X-Priority': 'high'
+  }
+  ```
+</ParamField>
+
+<ParamField path="metadata" type="Record<string, unknown>">
+  Custom metadata to attach to the email for tracking purposes.
+  
+  ```typescript
+  metadata: {
+    userId: '12345',
+    campaign: 'welcome-series'
+  }
+  ```
+</ParamField>
+
+<ParamField path="tags" type="string[]">
+  Tags to categorize and filter emails.
+  
+  ```typescript
+  tags: ['welcome', 'onboarding']
+  ```
+</ParamField>
+
+<ParamField path="attachments" type="Array<{ filename: string, content: string | Buffer, contentType?: string }>">
+  File attachments to include with the email.
+  
+  ```typescript
+  attachments: [
+    {
+      filename: 'invoice.pdf',
+      content: base64String,
+      contentType: 'application/pdf'
+    }
+  ]
+  ```
+</ParamField>
+
+## Response Type
+
+### LettermintResponse
+
+The `send` method returns a promise that resolves to:
+
+<ResponseField name="success" type="boolean" required>
+  Indicates whether the email was sent successfully.
+</ResponseField>
+
+<ResponseField name="messageId" type="string">
+  Unique identifier for the sent message. Only present on successful sends.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  The status of the email (e.g., 'pending', 'sent').
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if the send failed. Only present when `success` is `false`.
+</ResponseField>
+
+## Usage Example
+
+<Tabs>
+  <Tab title="Basic Usage">
+    ```vue
+    <script setup>
+    const { send, sending, error, lastMessageId } = useLettermint()
+
+    const sendWelcomeEmail = async () => {
+      const response = await send({
+        from: 'hello@example.com',
+        to: 'user@example.com',
+        subject: 'Welcome!',
+        html: '<h1>Welcome to our service!</h1>'
+      })
+
+      if (response.success) {
+        console.log('Email sent:', response.messageId)
+      }
+    }
+    </script>
+
+    <template>
+      <div>
+        <button @click="sendWelcomeEmail" :disabled="sending">
+          {{ sending ? 'Sending...' : 'Send Email' }}
+        </button>
+        <p v-if="error" class="error">{{ error }}</p>
+        <p v-if="lastMessageId">Last message ID: {{ lastMessageId }}</p>
+      </div>
+    </template>
+    ```
+  </Tab>
+
+  <Tab title="With Attachments">
+    ```vue
+    <script setup>
+    const { send } = useLettermint()
+
+    const sendInvoice = async (invoiceData: string) => {
+      await send({
+        from: 'billing@example.com',
+        to: 'customer@example.com',
+        subject: 'Your Invoice',
+        html: '<p>Please find your invoice attached.</p>',
+        attachments: [
+          {
+            filename: 'invoice.pdf',
+            content: invoiceData, // base64 string or Buffer
+            contentType: 'application/pdf'
+          }
+        ],
+        tags: ['invoice', 'billing']
+      })
+    }
+    </script>
+    ```
+  </Tab>
+
+  <Tab title="With Metadata">
+    ```vue
+    <script setup>
+    const { send } = useLettermint()
+
+    const sendCampaignEmail = async (userId: string) => {
+      await send({
+        from: 'marketing@example.com',
+        to: 'user@example.com',
+        subject: 'Special Offer',
+        html: '<p>Check out our special offer!</p>',
+        metadata: {
+          userId,
+          campaign: 'summer-2024',
+          segment: 'premium'
+        },
+        tags: ['campaign', 'promotional']
+      })
+    }
+    </script>
+    ```
+  </Tab>
+
+  <Tab title="Reactive State">
+    ```vue
+    <script setup>
+    const { send, sending, error, lastMessageId } = useLettermint()
+
+    // Watch for changes
+    watch(sending, (isSending) => {
+      console.log('Sending status:', isSending)
+    })
+
+    watch(error, (err) => {
+      if (err) {
+        console.error('Email error:', err)
+      }
+    })
+
+    watch(lastMessageId, (msgId) => {
+      if (msgId) {
+        console.log('New message sent:', msgId)
+      }
+    })
+    </script>
+    ```
+  </Tab>
+</Tabs>
+
+## Type Definitions
+
+```typescript
+export interface LettermintEmailOptions {
+  from: string
+  to: string | string[]
+  subject: string
+  text?: string
+  html?: string
+  cc?: string | string[]
+  bcc?: string | string[]
+  replyTo?: string | string[]
+  headers?: Record<string, string>
+  metadata?: Record<string, unknown>
+  tags?: string[]
+  attachments?: Array<{
+    filename: string
+    content: string | Buffer
+    contentType?: string
+  }>
+}
+
+export interface LettermintResponse {
+  success: boolean
+  messageId?: string
+  status?: string
+  error?: string
+}
+
+export interface UseLettermintReturn {
+  send: (options: LettermintEmailOptions) => Promise<LettermintResponse>
+  sending: Ref<boolean>
+  error: Ref<string | null>
+  lastMessageId: Ref<string | null>
+}
+```
+
+## Notes
+
+<Note>
+  This composable is designed for **client-side** use only. For server-side email sending, use the [`sendEmail`](/api/send-email) utility function.
+</Note>
+
+<Warning>
+  The composable makes requests to `/api/lettermint/send`. Ensure the Lettermint module is properly configured with a valid API key.
+</Warning>

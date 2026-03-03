@@ -1,0 +1,454 @@
+---
+title: "Types"
+description: "TypeScript type definitions and interfaces"
+---
+
+## Overview
+
+This page documents all TypeScript types and interfaces provided by the Nuxt Lettermint module. These types are automatically available when using the module in your Nuxt application.
+
+## Module Configuration
+
+### ModuleOptions
+
+Configuration options for the Lettermint module in `nuxt.config.ts`.
+
+```typescript
+export interface ModuleOptions {
+  /**
+   * Lettermint API key
+   * Can also be set via NUXT_LETTERMINT_API_KEY environment variable
+   */
+  apiKey?: string
+  
+  /**
+   * Whether to automatically register the /api/lettermint/send endpoint
+   * @default true
+   */
+  autoEndpoint?: boolean
+}
+```
+
+#### Usage
+
+```typescript
+// nuxt.config.ts
+export default defineNuxtConfig({
+  modules: ['nuxt-lettermint'],
+  lettermint: {
+    apiKey: 'your-api-key',
+    autoEndpoint: true
+  }
+})
+```
+
+## Client-Side Types
+
+### LettermintEmailOptions
+
+Options for sending an email using the client-side `useLettermint` composable.
+
+```typescript
+export interface LettermintEmailOptions {
+  /** Sender email address */
+  from: string
+  
+  /** Recipient email address(es) */
+  to: string | string[]
+  
+  /** Email subject line */
+  subject: string
+  
+  /** Plain text content */
+  text?: string
+  
+  /** HTML content */
+  html?: string
+  
+  /** Carbon copy recipient(s) */
+  cc?: string | string[]
+  
+  /** Blind carbon copy recipient(s) */
+  bcc?: string | string[]
+  
+  /** Reply-to address(es) */
+  replyTo?: string | string[]
+  
+  /** Custom email headers */
+  headers?: Record<string, string>
+  
+  /** Custom metadata for tracking */
+  metadata?: Record<string, unknown>
+  
+  /** Tags for categorization */
+  tags?: string[]
+  
+  /** File attachments */
+  attachments?: Array<{
+    filename: string
+    content: string | Buffer
+    contentType?: string
+  }>
+}
+```
+
+### LettermintResponse
+
+Response object returned when sending an email from the client.
+
+```typescript
+export interface LettermintResponse {
+  /** Whether the email was sent successfully */
+  success: boolean
+  
+  /** Unique message identifier (present on success) */
+  messageId?: string
+  
+  /** Status of the email */
+  status?: string
+  
+  /** Error message (present on failure) */
+  error?: string
+}
+```
+
+### UseLettermintReturn
+
+Return type of the client-side `useLettermint()` composable.
+
+```typescript
+export interface UseLettermintReturn {
+  /** Send an email */
+  send: (options: LettermintEmailOptions) => Promise<LettermintResponse>
+  
+  /** Reactive state: whether an email is currently being sent */
+  sending: Ref<boolean>
+  
+  /** Reactive state: last error message */
+  error: Ref<string | null>
+  
+  /** Reactive state: last message ID */
+  lastMessageId: Ref<string | null>
+}
+```
+
+## Server-Side Types
+
+### SendEmailOptions
+
+Options for the server-side `sendEmail()` utility function.
+
+```typescript
+export interface SendEmailOptions {
+  /** Sender email address */
+  from: string
+  
+  /** Recipient email address(es) */
+  to: string | string[]
+  
+  /** Email subject line */
+  subject: string
+  
+  /** Plain text content */
+  text?: string
+  
+  /** HTML content */
+  html?: string
+  
+  /** Carbon copy recipient(s) */
+  cc?: string | string[]
+  
+  /** Blind carbon copy recipient(s) */
+  bcc?: string | string[]
+  
+  /** Reply-to address(es) */
+  replyTo?: string | string[]
+  
+  /** Custom email headers */
+  headers?: Record<string, string>
+  
+  /** Custom metadata for tracking */
+  metadata?: Record<string, unknown>
+  
+  /** Tags for categorization */
+  tags?: string[]
+  
+  /** File attachments */
+  attachments?: Array<{
+    filename: string
+    content: string | Buffer
+    contentType?: string
+  }>
+}
+```
+
+<Note>
+  `SendEmailOptions` has the same structure as `LettermintEmailOptions`. They are defined separately because they are used in different contexts (server vs. client).
+</Note>
+
+## Extended Types (from types/index.ts)
+
+### LettermintModuleOptions
+
+Extended module configuration options.
+
+```typescript
+export interface LettermintModuleOptions {
+  /** Lettermint API key */
+  apiKey?: string
+  
+  /** Base URL for the Lettermint API */
+  baseUrl?: string
+  
+  /** Request timeout in milliseconds */
+  timeout?: number
+}
+```
+
+### LettermintEmailAddress
+
+Structured email address with optional display name.
+
+```typescript
+export interface LettermintEmailAddress {
+  /** Email address */
+  email: string
+  
+  /** Display name */
+  name?: string
+}
+```
+
+#### Usage
+
+```typescript
+const address: LettermintEmailAddress = {
+  email: 'john@example.com',
+  name: 'John Doe'
+}
+```
+
+### LettermintAttachment
+
+File attachment structure.
+
+```typescript
+export interface LettermintAttachment {
+  /** File name as it will appear to recipients */
+  filename: string
+  
+  /** File content (base64 string or Buffer) */
+  content: string | Buffer
+  
+  /** MIME type of the file */
+  contentType?: string
+}
+```
+
+### LettermintSendResponse
+
+Raw response from the Lettermint API.
+
+```typescript
+export interface LettermintSendResponse {
+  /** Unique message identifier */
+  message_id: string
+  
+  /** Status of the email */
+  status: 'pending' | 'sent' | 'failed'
+}
+```
+
+### LettermintApiResponse
+
+Normalized API response used internally.
+
+```typescript
+export interface LettermintApiResponse {
+  /** Whether the request was successful */
+  success: boolean
+  
+  /** Unique message identifier */
+  messageId?: string
+  
+  /** Status of the email */
+  status?: string
+  
+  /** Error message if failed */
+  error?: string
+}
+```
+
+### LettermintError
+
+Error object structure.
+
+```typescript
+export interface LettermintError {
+  /** HTTP status code */
+  statusCode: number
+  
+  /** Error message */
+  statusMessage: string
+  
+  /** Additional error data */
+  data?: unknown
+}
+```
+
+## Runtime Config Types
+
+### Module Augmentation
+
+The module extends Nuxt's runtime config types:
+
+```typescript
+declare module '@nuxt/schema' {
+  interface RuntimeConfig {
+    lettermint: {
+      apiKey: string
+    }
+  }
+  
+  interface PublicRuntimeConfig {
+    lettermint?: Record<string, never>
+  }
+}
+```
+
+This allows TypeScript to recognize the `lettermint` configuration:
+
+```typescript
+// In server context
+const config = useRuntimeConfig()
+const apiKey = config.lettermint.apiKey // ✅ Type-safe
+```
+
+## Type Usage Examples
+
+<Tabs>
+  <Tab title="Client Component">
+    ```vue
+    <script setup lang="ts">
+    import type { 
+      LettermintEmailOptions, 
+      LettermintResponse 
+    } from '#build/types/nuxt-lettermint'
+
+    const { send } = useLettermint()
+
+    const emailOptions: LettermintEmailOptions = {
+      from: 'hello@example.com',
+      to: 'user@example.com',
+      subject: 'Hello',
+      html: '<p>Hello World</p>'
+    }
+
+    const response: LettermintResponse = await send(emailOptions)
+    </script>
+    ```
+  </Tab>
+
+  <Tab title="API Route">
+    ```typescript
+    // server/api/send.post.ts
+    import type { SendEmailOptions } from '#lettermint/server'
+
+    export default defineEventHandler(async (event) => {
+      const body = await readBody(event)
+      
+      const options: SendEmailOptions = {
+        from: 'hello@example.com',
+        to: body.email,
+        subject: 'Welcome',
+        html: '<h1>Welcome!</h1>'
+      }
+      
+      const result = await sendEmail(options)
+      return result
+    })
+    ```
+  </Tab>
+
+  <Tab title="With Attachments">
+    ```typescript
+    import type { 
+      LettermintAttachment,
+      SendEmailOptions 
+    } from '#lettermint/server'
+
+    const attachment: LettermintAttachment = {
+      filename: 'invoice.pdf',
+      content: pdfBuffer,
+      contentType: 'application/pdf'
+    }
+
+    const options: SendEmailOptions = {
+      from: 'billing@example.com',
+      to: 'customer@example.com',
+      subject: 'Invoice',
+      html: '<p>Invoice attached</p>',
+      attachments: [attachment]
+    }
+
+    await sendEmail(options)
+    ```
+  </Tab>
+
+  <Tab title="Configuration">
+    ```typescript
+    // nuxt.config.ts
+    import type { ModuleOptions } from 'nuxt-lettermint'
+
+    export default defineNuxtConfig({
+      modules: ['nuxt-lettermint'],
+      lettermint: {
+        apiKey: process.env.LETTERMINT_API_KEY,
+        autoEndpoint: true
+      } satisfies ModuleOptions
+    })
+    ```
+  </Tab>
+</Tabs>
+
+## Type Imports
+
+Types can be imported from different locations depending on the context:
+
+### Client-Side Types
+
+```typescript
+// In client components, pages, or composables
+import type { 
+  LettermintEmailOptions,
+  LettermintResponse,
+  UseLettermintReturn
+} from '#build/types/nuxt-lettermint'
+```
+
+### Server-Side Types
+
+```typescript
+// In server routes, middleware, or plugins
+import type { 
+  SendEmailOptions
+} from '#lettermint/server'
+
+// Or import directly from the module
+import type { 
+  SendEmailOptions 
+} from '~/server/utils/lettermint'
+```
+
+### Module Configuration Types
+
+```typescript
+// In nuxt.config.ts
+import type { ModuleOptions } from 'nuxt-lettermint'
+```
+
+## Related
+
+- [useLettermint (client)](/api/use-lettermint) - Client-side composable API
+- [sendEmail](/api/send-email) - Server-side utility API
+- [useLettermint (server)](/api/lettermint-instance) - Server SDK instance

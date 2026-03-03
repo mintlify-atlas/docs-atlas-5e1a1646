@@ -1,0 +1,176 @@
+---
+title: Installation
+description: Install the Nuxt Lettermint module in your project
+---
+
+## Requirements
+
+Before installing Nuxt Lettermint, ensure your project meets these requirements:
+
+- **Nuxt 3.x** or **Nuxt 4.x**
+- **Node.js 16.x** or higher
+
+## Installation Steps
+
+<Steps>
+  <Step title="Install the module">
+    Choose your preferred package manager to install the module:
+
+    <Tabs>
+      <Tab title="Nuxt CLI (Recommended)">
+        ```bash
+        npx nuxi module add lettermint
+        ```
+      </Tab>
+      <Tab title="npm">
+        ```bash
+        npm install nuxt-lettermint
+        ```
+      </Tab>
+      <Tab title="pnpm">
+        ```bash
+        pnpm add nuxt-lettermint
+        ```
+      </Tab>
+      <Tab title="yarn">
+        ```bash
+        yarn add nuxt-lettermint
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Add module to Nuxt config">
+    Add `nuxt-lettermint` to the `modules` array in your `nuxt.config.ts` file:
+
+    ```typescript nuxt.config.ts
+    export default defineNuxtConfig({
+      modules: ['nuxt-lettermint']
+    })
+    ```
+
+    <Note>
+      If you used the Nuxt CLI installation method, this step is done automatically.
+    </Note>
+  </Step>
+
+  <Step title="Configure your API key">
+    You need a Lettermint API key to send emails. Get your key from the [Lettermint Dashboard](https://dash.lettermint.co/projects).
+
+    <Tabs>
+      <Tab title="Environment Variable (Recommended)">
+        Create a `.env` file in your project root:
+
+        ```bash .env
+        NUXT_LETTERMINT_API_KEY=your-lettermint-api-key
+        ```
+
+        <Tip>
+          This is the recommended approach as it keeps your API key secure and out of version control.
+        </Tip>
+      </Tab>
+      <Tab title="Nuxt Config">
+        Alternatively, add your API key directly in `nuxt.config.ts`:
+
+        ```typescript nuxt.config.ts
+        export default defineNuxtConfig({
+          modules: ['nuxt-lettermint'],
+          lettermint: {
+            apiKey: 'your-api-key'
+          }
+        })
+        ```
+
+        <Warning>
+          Be careful not to commit your API key to version control when using this method.
+        </Warning>
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Verify installation">
+    Start your development server to verify the installation:
+
+    ```bash
+    npm run dev
+    ```
+
+    If everything is set up correctly, you should see no errors related to Lettermint in your console.
+  </Step>
+</Steps>
+
+## Configuration Options
+
+The module accepts the following configuration options in `nuxt.config.ts`:
+
+```typescript nuxt.config.ts
+export default defineNuxtConfig({
+  modules: ['nuxt-lettermint'],
+  lettermint: {
+    // Your Lettermint API key
+    apiKey: 'your-api-key',
+    
+    // Enable/disable the auto-generated /api/lettermint/send endpoint
+    // Default: true
+    autoEndpoint: true
+  }
+})
+```
+
+### Auto-Generated Endpoint
+
+By default, the module creates an endpoint at `/api/lettermint/send` for sending emails. This enables the client-side `useLettermint()` composable to work out of the box.
+
+If you prefer to create your own custom endpoints, you can disable this behavior:
+
+```typescript nuxt.config.ts
+export default defineNuxtConfig({
+  modules: ['nuxt-lettermint'],
+  lettermint: {
+    autoEndpoint: false
+  }
+})
+```
+
+<Warning>
+  When `autoEndpoint` is set to `false`, the client-side `useLettermint()` composable will not work unless you create a custom endpoint at `/api/lettermint/send`.
+</Warning>
+
+## Get Your API Key
+
+To obtain your Lettermint API key:
+
+<Steps>
+  <Step title="Visit the Lettermint Dashboard">
+    Go to [https://dash.lettermint.co/projects](https://dash.lettermint.co/projects)
+  </Step>
+  <Step title="Select your project">
+    Choose the project you want to use for sending emails
+  </Step>
+  <Step title="Copy your API token">
+    Find and copy your API token from the project settings
+  </Step>
+</Steps>
+
+<Tip>
+  Don't have a Lettermint account yet? Sign up at [lettermint.co](https://lettermint.co) to get started.
+</Tip>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="Quickstart"
+    icon="rocket"
+    href="/quickstart"
+  >
+    Learn how to send your first email
+  </Card>
+  <Card
+    title="API Reference"
+    icon="code"
+    href="/api/use-lettermint"
+  >
+    Explore the complete API documentation
+  </Card>
+</CardGroup>

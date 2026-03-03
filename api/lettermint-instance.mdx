@@ -1,0 +1,356 @@
+---
+title: "useLettermint (server)"
+description: "Access the Lettermint SDK instance on the server"
+---
+
+## Overview
+
+The server-side `useLettermint()` function returns the initialized Lettermint SDK instance, giving you direct access to the full Lettermint API. This is useful when you need features beyond the simplified `sendEmail` utility.
+
+<Note>
+  This function can only be used in **server contexts** such as API routes, server middleware, or Nitro plugins. For client-side use, see the [client-side useLettermint composable](/api/use-lettermint).
+</Note>
+
+## Signature
+
+```typescript
+function useLettermint(): Lettermint
+```
+
+## Return Value
+
+<ResponseField name="return" type="Lettermint" required>
+  Returns a singleton instance of the Lettermint SDK client, configured with your API key.
+</ResponseField>
+
+## Configuration
+
+The Lettermint instance is automatically configured with:
+
+- **API Token**: Read from `NUXT_LETTERMINT_API_KEY` environment variable or the module configuration
+- **Singleton Pattern**: The instance is created once and reused across all server contexts
+
+<Warning>
+  The function will throw an error if no API key is configured:
+  
+  ```
+  Error: Lettermint API key is not configured. Please set NUXT_LETTERMINT_API_KEY environment variable or configure it in nuxt.config.ts
+  ```
+</Warning>
+
+## Usage Examples
+
+<Tabs>
+  <Tab title="Fluent Email API">
+    ```typescript
+    // server/api/send-email.post.ts
+    export default defineEventHandler(async (event) => {
+      const lettermint = useLettermint()
+      
+      const result = await lettermint.email
+        .from('hello@example.com')
+        .to('user@example.com')
+        .subject('Welcome!')
+        .html('<h1>Welcome to our service!</h1>')
+        .tag('welcome')
+        .metadata({ userId: '12345' })
+        .send()
+      
+      return result
+    })
+    ```
+  </Tab>
+
+  <Tab title="Multiple Recipients">
+    ```typescript
+    // server/api/broadcast.post.ts
+    export default defineEventHandler(async () => {
+      const lettermint = useLettermint()
+      
+      const result = await lettermint.email
+        .from('news@example.com')
+        .to('user1@example.com')
+        .to('user2@example.com')
+        .to('user3@example.com')
+        .cc('manager@example.com')
+        .subject('Monthly Newsletter')
+        .html('<p>Check out this month\'s updates!</p>')
+        .tag('newsletter')
+        .send()
+      
+      return { messageId: result.message_id }
+    })
+    ```
+  </Tab>
+
+  <Tab title="With Attachments">
+    ```typescript
+    // server/api/send-report.post.ts
+    import fs from 'fs'
+
+    export default defineEventHandler(async () => {
+      const lettermint = useLettermint()
+      
+      // Read file and convert to base64
+      const pdfBuffer = fs.readFileSync('./report.pdf')
+      const base64Content = pdfBuffer.toString('base64')
+      
+      const result = await lettermint.email
+        .from('reports@example.com')
+        .to('admin@example.com')
+        .subject('Monthly Report')
+        .html('<p>Please find the report attached.</p>')
+        .attach('monthly-report.pdf', base64Content)
+        .send()
+      
+      return { success: true, messageId: result.message_id }
+    })
+    ```
+  </Tab>
+
+  <Tab title="Custom Headers">
+    ```typescript
+    // server/api/priority-email.post.ts
+    export default defineEventHandler(async (event) => {
+      const { email, name } = await readBody(event)
+      const lettermint = useLettermint()
+      
+      const result = await lettermint.email
+        .from('alerts@example.com')
+        .to(email)
+        .subject('Urgent: Action Required')
+        .html(`<p>Hi ${name}, immediate action is required.</p>`)
+        .replyTo('support@example.com')
+        .headers({
+          'X-Priority': '1',
+          'X-MSMail-Priority': 'High',
+          'Importance': 'high'
+        })
+        .tag('urgent')
+        .send()
+      
+      return result
+    })
+    ```
+  </Tab>
+
+  <Tab title="Complex Email">
+    ```typescript
+    // server/api/order-confirmation.post.ts
+    export default defineEventHandler(async (event) => {
+      const { order } = await readBody(event)
+      const lettermint = useLettermint()
+      
+      let email = lettermint.email
+        .from('orders@example.com')
+        .to(order.customerEmail)
+        .subject(`Order Confirmation #${order.id}`)
+        .html(generateOrderEmailHtml(order))
+        .text(generateOrderEmailText(order))
+        .replyTo('support@example.com')
+        .tag('order-confirmation')
+        .tag('transactional')
+        .metadata({
+          orderId: order.id,
+          customerId: order.customerId,
+          total: order.total
+        })
+      
+      // Add BCC for record keeping
+      if (order.total > 1000) {
+        email = email.bcc('sales-manager@example.com')
+      }
+      
+      // Add invoice attachment if available
+      if (order.invoicePdf) {
+        email = email.attach(
+          `invoice-${order.id}.pdf`,
+          order.invoicePdf
+        )
+      }
+      
+      const result = await email.send()
+      
+      return {
+        success: true,
+        messageId: result.message_id
+      }
+    })
+    ```
+  </Tab>
+</Tabs>
+
+## Fluent Email Builder API
+
+The Lettermint SDK uses a fluent (chainable) API for building emails:
+
+### Basic Methods
+
+<ParamField path="from" type="(email: string) => EmailBuilder">
+  Set the sender email address.
+  
+  ```typescript
+  .from('hello@example.com')
+  ```
+</ParamField>
+
+<ParamField path="to" type="(email: string) => EmailBuilder">
+  Add a recipient. Can be called multiple times to add multiple recipients.
+  
+  ```typescript
+  .to('user1@example.com')
+  .to('user2@example.com')
+  ```
+</ParamField>
+
+<ParamField path="subject" type="(text: string) => EmailBuilder">
+  Set the email subject.
+  
+  ```typescript
+  .subject('Welcome!')
+  ```
+</ParamField>
+
+<ParamField path="text" type="(content: string) => EmailBuilder">
+  Set the plain text body.
+  
+  ```typescript
+  .text('Plain text content')
+  ```
+</ParamField>
+
+<ParamField path="html" type="(content: string) => EmailBuilder">
+  Set the HTML body.
+  
+  ```typescript
+  .html('<h1>HTML content</h1>')
+  ```
+</ParamField>
+
+### Additional Recipients
+
+<ParamField path="cc" type="(email: string) => EmailBuilder">
+  Add a CC recipient. Can be called multiple times.
+  
+  ```typescript
+  .cc('manager@example.com')
+  ```
+</ParamField>
+
+<ParamField path="bcc" type="(email: string) => EmailBuilder">
+  Add a BCC recipient. Can be called multiple times.
+  
+  ```typescript
+  .bcc('archive@example.com')
+  ```
+</ParamField>
+
+<ParamField path="replyTo" type="(email: string) => EmailBuilder">
+  Add a reply-to address. Can be called multiple times.
+  
+  ```typescript
+  .replyTo('support@example.com')
+  ```
+</ParamField>
+
+### Metadata and Organization
+
+<ParamField path="tag" type="(tag: string) => EmailBuilder">
+  Add a tag for categorization. Can be called multiple times.
+  
+  ```typescript
+  .tag('welcome')
+  .tag('onboarding')
+  ```
+</ParamField>
+
+<ParamField path="metadata" type="(data: Record<string, string>) => EmailBuilder">
+  Attach custom metadata for tracking.
+  
+  ```typescript
+  .metadata({ userId: '12345', campaign: 'summer' })
+  ```
+</ParamField>
+
+<ParamField path="headers" type="(headers: Record<string, string>) => EmailBuilder">
+  Set custom email headers.
+  
+  ```typescript
+  .headers({ 'X-Custom-Header': 'value' })
+  ```
+</ParamField>
+
+### Attachments
+
+<ParamField path="attach" type="(filename: string, content: string) => EmailBuilder">
+  Add a file attachment. Content should be a base64-encoded string.
+  
+  ```typescript
+  .attach('document.pdf', base64String)
+  ```
+</ParamField>
+
+### Sending
+
+<ParamField path="send" type="() => Promise<any>">
+  Send the email and return the result.
+  
+  ```typescript
+  const result = await email.send()
+  ```
+</ParamField>
+
+## Implementation Details
+
+The `useLettermint()` function:
+
+```typescript
+import { Lettermint } from 'lettermint'
+import { useRuntimeConfig } from '#imports'
+
+let lettermintInstance: Lettermint | null = null
+
+export function useLettermint(): Lettermint {
+  if (!lettermintInstance) {
+    const config = useRuntimeConfig()
+
+    if (!config.lettermint?.apiKey) {
+      throw new Error('Lettermint API key is not configured. Please set NUXT_LETTERMINT_API_KEY environment variable or configure it in nuxt.config.ts')
+    }
+
+    lettermintInstance = new Lettermint({
+      apiToken: config.lettermint.apiKey,
+    })
+  }
+
+  return lettermintInstance
+}
+```
+
+### Key Features:
+
+1. **Singleton Pattern**: Creates the instance only once and reuses it
+2. **Lazy Initialization**: Instance is created on first use
+3. **Configuration Validation**: Throws an error if API key is missing
+4. **Runtime Config**: Reads API key from Nuxt runtime configuration
+
+## When to Use
+
+Use the direct SDK instance when you need:
+
+- **Fluent API**: Prefer the chainable builder pattern
+- **Fine-grained control**: Need access to advanced SDK features
+- **Dynamic email construction**: Building emails conditionally with complex logic
+- **SDK-specific features**: Features not exposed by the `sendEmail` utility
+
+Use the `sendEmail` utility when you:
+
+- Want a simpler, object-based API
+- Don't need advanced SDK features
+- Prefer a more straightforward function call
+
+## Related
+
+- [sendEmail](/api/send-email) - High-level utility for sending emails
+- [useLettermint (client)](/api/use-lettermint) - Client-side composable
+- [Types Reference](/api/types) - TypeScript type definitions

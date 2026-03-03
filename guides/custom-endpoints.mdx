@@ -1,0 +1,510 @@
+---
+title: Custom endpoints
+description: Create custom API endpoints for email sending
+---
+
+By default, the Nuxt Lettermint module creates an endpoint at `/api/lettermint/send` for client-side email sending. However, you may want to create custom endpoints with additional logic, validation, or routing.
+
+## Why use custom endpoints?
+
+Custom endpoints are useful when you need to:
+
+- Add custom validation before sending emails
+- Implement rate limiting or spam protection
+- Log email activity to your database
+- Transform or sanitize user input
+- Add authentication or authorization checks
+- Route different email types to different handlers
+- Integrate with other services before/after sending
+
+<Note>
+If you only need to send emails from server code, you don't need custom endpoints. Use `sendEmail()` directly in your server routes.
+</Note>
+
+## Disabling the auto-generated endpoint
+
+To create custom endpoints, first disable the auto-generated endpoint in your Nuxt config:
+
+```typescript nuxt.config.ts
+export default defineNuxtConfig({
+  modules: ['nuxt-lettermint'],
+  lettermint: {
+    autoEndpoint: false
+  }
+})
+```
+
+<Warning>
+When you disable `autoEndpoint`, the client-side `useLettermint()` composable will not work unless you create a custom endpoint at `/api/lettermint/send` or modify your client code to use a different endpoint.
+</Warning>
+
+## Creating a custom endpoint
+
+Here's the basic structure for a custom endpoint:
+
+```typescript server/api/lettermint/send.post.ts
+import { sendEmail } from '#imports'
+import { defineEventHandler, readBody } from 'h3'
+
+export default defineEventHandler(async (event) => {
+  const body = await readBody(event)
+  
+  // Add your custom logic here
+  
+  return await sendEmail(body)
+})
+```
+
+<Tip>
+Create your custom endpoint at `/api/lettermint/send.post.ts` to maintain compatibility with the default `useLettermint()` composable.
+</Tip>
+
+## Example: Custom validation
+
+Add custom validation before sending emails:
+
+```typescript server/api/lettermint/send.post.ts
+import { sendEmail } from '#imports'
+import { defineEventHandler, readBody, createError } from 'h3'
+
+export default defineEventHandler(async (event) => {
+  const body = await readBody(event)
+
+  // Custom validation
+  if (!body.from || !body.to || !body.subject) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Missing required fields: from, to, or subject'
+    })
+  }
+
+  // Validate email domain
+  if (!body.from.endsWith('@yourdomain.com')) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'From address must be from @yourdomain.com'
+    })
+  }
+
+  // Ensure at least one content type
+  if (!body.text && !body.html) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Either text or html content is required'
+    })
+  }
+
+  return await sendEmail(body)
+})
+```
+
+## Example: Rate limiting
+
+Implement rate limiting to prevent abuse:
+
+```typescript server/api/lettermint/send.post.ts
+import { sendEmail } from '#imports'
+import { defineEventHandler, readBody, createError, getRequestIP } from 'h3'
+
+// Simple in-memory rate limiter (use Redis in production)
+const rateLimits = new Map<string, { count: number, resetAt: number }>()
+
+const RATE_LIMIT = 10 // emails per window
+const RATE_WINDOW = 60 * 60 * 1000 // 1 hour in milliseconds
+
+export default defineEventHandler(async (event) => {
+  const ip = getRequestIP(event, { xForwardedFor: true })
+  const now = Date.now()
+
+  // Check rate limit
+  const limit = rateLimits.get(ip)
+  if (limit) {
+    if (now < limit.resetAt) {
+      if (limit.count >= RATE_LIMIT) {
+        throw createError({
+          statusCode: 429,
+          statusMessage: 'Too many emails sent. Please try again later.'
+        })
+      }
+      limit.count++
+    } else {
+      // Reset window
+      rateLimits.set(ip, { count: 1, resetAt: now + RATE_WINDOW })
+    }
+  } else {
+    rateLimits.set(ip, { count: 1, resetAt: now + RATE_WINDOW })
+  }
+
+  const body = await readBody(event)
+  return await sendEmail(body)
+})
+```
+
+<Warning>
+The above example uses in-memory storage. For production, use Redis or a similar persistent store.
+</Warning>
+
+## Example: Logging and analytics
+
+Log email activity to your database:
+
+```typescript server/api/lettermint/send.post.ts
+import { sendEmail } from '#imports'
+import { defineEventHandler, readBody, getRequestIP } from 'h3'
+
+export default defineEventHandler(async (event) => {
+  const body = await readBody(event)
+  const ip = getRequestIP(event, { xForwardedFor: true })
+
+  try {
+    // Send the email
+    const result = await sendEmail(body)
+
+    // Log successful send to database
+    await db.emailLogs.create({
+      messageId: result.message_id,
+      from: body.from,
+      to: Array.isArray(body.to) ? body.to.join(', ') : body.to,
+      subject: body.subject,
+      status: 'sent',
+      sentAt: new Date(),
+      ipAddress: ip,
+      tags: body.tags || []
+    })
+
+    return {
+      success: true,
+      messageId: result.message_id,
+      status: result.status
+    }
+  }
+  catch (error) {
+    // Log failed send
+    await db.emailLogs.create({
+      from: body.from,
+      to: Array.isArray(body.to) ? body.to.join(', ') : body.to,
+      subject: body.subject,
+      status: 'failed',
+      error: (error as Error).message,
+      sentAt: new Date(),
+      ipAddress: ip
+    })
+
+    throw error
+  }
+})
+```
+
+## Example: Authentication check
+
+Require authentication before sending emails:
+
+```typescript server/api/lettermint/send.post.ts
+import { sendEmail } from '#imports'
+import { defineEventHandler, readBody, createError, getHeader } from 'h3'
+
+export default defineEventHandler(async (event) => {
+  // Check for auth token
+  const authToken = getHeader(event, 'authorization')
+  if (!authToken) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Authentication required'
+    })
+  }
+
+  // Verify token (example)
+  const user = await verifyAuthToken(authToken)
+  if (!user) {
+    throw createError({
+      statusCode: 401,
+      statusMessage: 'Invalid authentication token'
+    })
+  }
+
+  const body = await readBody(event)
+
+  // Add user info to metadata
+  const result = await sendEmail({
+    ...body,
+    metadata: {
+      ...body.metadata,
+      userId: user.id,
+      userEmail: user.email
+    },
+    tags: [...(body.tags || []), `user:${user.id}`]
+  })
+
+  return {
+    success: true,
+    messageId: result.message_id,
+    status: result.status
+  }
+})
+```
+
+## Example: Input sanitization
+
+Sanitize user input to prevent XSS or injection attacks:
+
+```typescript server/api/lettermint/send.post.ts
+import { sendEmail } from '#imports'
+import { defineEventHandler, readBody } from 'h3'
+import DOMPurify from 'isomorphic-dompurify'
+
+export default defineEventHandler(async (event) => {
+  const body = await readBody(event)
+
+  // Sanitize HTML content
+  if (body.html) {
+    body.html = DOMPurify.sanitize(body.html, {
+      ALLOWED_TAGS: ['h1', 'h2', 'h3', 'p', 'a', 'strong', 'em', 'ul', 'ol', 'li'],
+      ALLOWED_ATTR: ['href', 'target']
+    })
+  }
+
+  // Sanitize text content (strip HTML)
+  if (body.text) {
+    body.text = body.text.replace(/<[^>]*>/g, '')
+  }
+
+  // Sanitize subject
+  if (body.subject) {
+    body.subject = body.subject.replace(/<[^>]*>/g, '').trim()
+  }
+
+  return await sendEmail(body)
+})
+```
+
+## Example: Multiple custom endpoints
+
+Create separate endpoints for different email types:
+
+<CodeGroup>
+
+```typescript Contact form
+// server/api/contact.post.ts
+import { sendEmail } from '#imports'
+import { defineEventHandler, readBody } from 'h3'
+
+export default defineEventHandler(async (event) => {
+  const { name, email, message } = await readBody(event)
+
+  return await sendEmail({
+    from: 'contact@example.com',
+    to: 'support@example.com',
+    replyTo: email,
+    subject: `Contact Form: ${name}`,
+    html: `
+      <h2>New Contact Form Submission</h2>
+      <p><strong>From:</strong> ${name} (${email})</p>
+      <p><strong>Message:</strong></p>
+      <p>${message}</p>
+    `,
+    tags: ['contact-form']
+  })
+})
+```
+
+```typescript Newsletter signup
+// server/api/newsletter.post.ts
+import { sendEmail } from '#imports'
+import { defineEventHandler, readBody } from 'h3'
+
+export default defineEventHandler(async (event) => {
+  const { email } = await readBody(event)
+
+  // Add to newsletter list (your logic here)
+  await addToNewsletterList(email)
+
+  // Send welcome email
+  return await sendEmail({
+    from: 'newsletter@example.com',
+    to: email,
+    subject: 'Welcome to our newsletter!',
+    html: '<h1>Thanks for subscribing!</h1>',
+    tags: ['newsletter', 'welcome']
+  })
+})
+```
+
+```typescript Password reset
+// server/api/auth/reset-password.post.ts
+import { sendEmail } from '#imports'
+import { defineEventHandler, readBody } from 'h3'
+
+export default defineEventHandler(async (event) => {
+  const { email } = await readBody(event)
+
+  // Generate reset token (your logic here)
+  const resetToken = await generateResetToken(email)
+  const resetUrl = `https://example.com/reset?token=${resetToken}`
+
+  return await sendEmail({
+    from: 'security@example.com',
+    to: email,
+    subject: 'Reset your password',
+    html: `
+      <h1>Password Reset Request</h1>
+      <p>Click the link below to reset your password:</p>
+      <a href="${resetUrl}">Reset Password</a>
+    `,
+    tags: ['security', 'password-reset']
+  })
+})
+```
+
+</CodeGroup>
+
+## Using custom endpoints from the client
+
+If you create custom endpoints at different paths, update your client code:
+
+```vue Contact form component
+<script setup>
+import { ref } from 'vue'
+import { $fetch } from 'ofetch'
+
+const sending = ref(false)
+const error = ref(null)
+
+const sendContactForm = async (formData) => {
+  sending.value = true
+  error.value = null
+
+  try {
+    await $fetch('/api/contact', {
+      method: 'POST',
+      body: formData
+    })
+    // Success!
+  } catch (err) {
+    error.value = err.message
+  } finally {
+    sending.value = false
+  }
+}
+</script>
+```
+
+<Info>
+If you create a custom endpoint at `/api/lettermint/send`, the default `useLettermint()` composable will work without any changes.
+</Info>
+
+## Reference: Default endpoint implementation
+
+Here's the complete implementation of the auto-generated endpoint for reference:
+
+```typescript src/runtime/server/api/lettermint/send.post.ts
+import { defineEventHandler, readBody, createError } from 'h3'
+import { sendEmail, type SendEmailOptions } from '../../utils/lettermint'
+
+export default defineEventHandler(async (event) => {
+  try {
+    const body = await readBody<SendEmailOptions>(event)
+
+    // Validate required fields
+    if (!body.from) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Missing required field: from',
+      })
+    }
+
+    if (!body.to) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Missing required field: to',
+      })
+    }
+
+    if (!body.subject) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Missing required field: subject',
+      })
+    }
+
+    if (!body.text && !body.html) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Either text or html content is required',
+      })
+    }
+
+    // Send the email
+    const result = await sendEmail(body)
+
+    return {
+      success: true,
+      messageId: result.message_id,
+      status: result.status,
+    }
+  }
+  catch (error: unknown) {
+    const err = error as any
+
+    // Handle Lettermint SDK errors with responseBody
+    if (err.responseBody?.message) {
+      throw createError({
+        statusCode: err.statusCode || 422,
+        statusMessage: err.responseBody.message,
+      })
+    }
+
+    // Handle validation errors
+    if (err.statusCode) {
+      throw createError({
+        statusCode: err.statusCode,
+        statusMessage: err.message || 'Validation error',
+      })
+    }
+
+    // Handle other errors
+    throw createError({
+      statusCode: 500,
+      statusMessage: err.message || 'Internal server error while sending email',
+    })
+  }
+})
+```
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Always validate input">
+    Even though `sendEmail()` validates required fields, add your own validation for security and better error messages.
+  </Accordion>
+  
+  <Accordion title="Implement rate limiting">
+    Protect your API from abuse with rate limiting, especially for public-facing endpoints.
+  </Accordion>
+  
+  <Accordion title="Log email activity">
+    Keep track of sent emails for debugging, analytics, and compliance purposes.
+  </Accordion>
+  
+  <Accordion title="Sanitize user input">
+    Always sanitize HTML content and user-provided data to prevent XSS attacks.
+  </Accordion>
+  
+  <Accordion title="Use authentication">
+    Require authentication for email endpoints to prevent unauthorized use.
+  </Accordion>
+  
+  <Accordion title="Handle errors gracefully">
+    Return helpful error messages while avoiding exposing sensitive information.
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Server-side usage" icon="server" href="/guides/server-side">
+    Learn about the sendEmail() function
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration/setup">
+    Configure the module for your needs
+  </Card>
+</CardGroup>

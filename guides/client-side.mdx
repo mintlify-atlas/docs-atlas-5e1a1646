@@ -1,0 +1,329 @@
+---
+title: Client-side usage
+description: Send emails from Vue components using useLettermint composable
+---
+
+The `useLettermint()` composable provides a simple way to send emails directly from your Vue components. This is useful for contact forms, user-triggered notifications, and other client-side email functionality.
+
+## Basic usage
+
+Import and use the `useLettermint()` composable in any Vue component:
+
+```vue
+<script setup>
+const { send, sending, error, lastMessageId } = useLettermint()
+
+const handleSubmit = async () => {
+  await send({
+    from: 'sender@example.com',
+    to: 'ok@testing.lettermint.co',
+    subject: 'Hello!',
+    html: '<h1>Hello World</h1>'
+  })
+}
+</script>
+```
+
+## Composable API
+
+The `useLettermint()` composable returns an object with the following properties:
+
+### `send(options)`
+
+Sends an email with the provided options. Returns a promise that resolves to a `LettermintResponse` object.
+
+**Parameters:**
+- `options` (LettermintEmailOptions) - Email configuration object
+
+**Returns:**
+```typescript
+interface LettermintResponse {
+  success: boolean
+  messageId?: string
+  status?: string
+  error?: string
+}
+```
+
+### Reactive properties
+
+The composable provides reactive state for tracking email operations:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `sending` | `Ref<boolean>` | `true` while an email is being sent |
+| `error` | `Ref<string \| null>` | Error message if the send operation failed |
+| `lastMessageId` | `Ref<string \| null>` | Message ID from the last successful send |
+
+## Email options
+
+The `send()` function accepts the following options:
+
+```typescript
+interface LettermintEmailOptions {
+  from: string                    // Sender email address
+  to: string | string[]          // Recipient email address(es)
+  subject: string                // Email subject
+  text?: string                  // Plain text content
+  html?: string                  // HTML content
+  cc?: string | string[]         // CC recipients
+  bcc?: string | string[]        // BCC recipients
+  replyTo?: string | string[]    // Reply-to address(es)
+  headers?: Record<string, string>  // Custom headers
+  metadata?: Record<string, unknown> // Custom metadata
+  tags?: string[]                // Tags for categorization
+  attachments?: Array<{          // File attachments
+    filename: string
+    content: string | Buffer
+    contentType?: string
+  }>
+}
+```
+
+<Note>
+Either `text` or `html` content is required. You can provide both for multipart emails.
+</Note>
+
+## Complete example
+
+Here's a real-world example from the module playground showing a contact form implementation:
+
+```vue playground/app.vue
+<template>
+  <div>
+    <h2>Send Email Demo</h2>
+    
+    <form @submit.prevent="sendTestEmail">
+      <div class="form-group">
+        <label for="from">From:</label>
+        <input
+          id="from"
+          v-model="emailForm.from"
+          type="email"
+          placeholder="sender@example.com"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="to">To:</label>
+        <input
+          id="to"
+          v-model="emailForm.to"
+          type="email"
+          placeholder="ok@testing.lettermint.co"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="subject">Subject:</label>
+        <input
+          id="subject"
+          v-model="emailForm.subject"
+          type="text"
+          placeholder="Test Email from Nuxt Lettermint"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="html">HTML Content:</label>
+        <textarea
+          id="html"
+          v-model="emailForm.html"
+          rows="5"
+          placeholder="<h1>HTML email content...</h1>"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="tag">Tag:</label>
+        <input
+          id="tag"
+          v-model="emailForm.tag"
+          type="text"
+          placeholder="nuxt"
+        >
+        <small>Add a tag to categorize and track your email</small>
+      </div>
+
+      <button
+        type="submit"
+        :disabled="sending"
+      >
+        {{ sending ? 'Sending...' : 'Send Email' }}
+      </button>
+    </form>
+
+    <div v-if="error" class="error-message">
+      Error: {{ error }}
+    </div>
+
+    <div v-if="successMessage" class="success-message">
+      {{ successMessage }}
+    </div>
+
+    <div v-if="lastMessageId" class="info-message">
+      Last Message ID: {{ lastMessageId }}
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+
+const { send, sending, error, lastMessageId } = useLettermint()
+
+const emailForm = ref({
+  from: 'demo@lettermint.co',
+  to: 'ok@testing.lettermint.co',
+  subject: 'Test Email from Nuxt Lettermint Module',
+  html: '<h1>Test Email</h1><p>This is a <strong>test email</strong> sent from the Nuxt Lettermint module playground.</p>',
+  tag: 'nuxt',
+})
+
+const successMessage = ref('')
+
+const sendTestEmail = async () => {
+  successMessage.value = ''
+
+  const emailData = {
+    from: emailForm.value.from,
+    to: emailForm.value.to,
+    subject: emailForm.value.subject,
+    html: emailForm.value.html,
+  }
+
+  if (emailForm.value.tag && emailForm.value.tag.trim()) {
+    emailData.tags = [emailForm.value.tag.trim()]
+  }
+
+  const result = await send(emailData)
+
+  if (result.success) {
+    successMessage.value = `Email sent successfully! Message ID: ${result.messageId}`
+  }
+}
+</script>
+```
+
+## Error handling
+
+The composable automatically handles errors and updates the `error` ref. You can check the response or the reactive error property:
+
+<CodeGroup>
+
+```vue Response object
+<script setup>
+const { send } = useLettermint()
+
+const handleSubmit = async () => {
+  const result = await send({
+    from: 'sender@example.com',
+    to: 'recipient@example.com',
+    subject: 'Hello',
+    html: '<h1>Hello</h1>'
+  })
+
+  if (!result.success) {
+    console.error('Failed to send:', result.error)
+  } else {
+    console.log('Sent! Message ID:', result.messageId)
+  }
+}
+</script>
+```
+
+```vue Reactive error
+<template>
+  <div>
+    <button @click="sendEmail" :disabled="sending">
+      Send Email
+    </button>
+    <div v-if="error" class="error">
+      {{ error }}
+    </div>
+  </div>
+</template>
+
+<script setup>
+const { send, sending, error } = useLettermint()
+
+const sendEmail = async () => {
+  await send({
+    from: 'sender@example.com',
+    to: 'recipient@example.com',
+    subject: 'Hello',
+    html: '<h1>Hello</h1>'
+  })
+}
+</script>
+```
+
+</CodeGroup>
+
+## Multiple recipients
+
+You can send to multiple recipients by passing an array:
+
+```vue
+<script setup>
+const { send } = useLettermint()
+
+await send({
+  from: 'sender@example.com',
+  to: ['user1@example.com', 'user2@example.com'],
+  cc: ['manager@example.com'],
+  bcc: ['archive@example.com'],
+  subject: 'Team Update',
+  html: '<h1>Important Team Update</h1>'
+})
+</script>
+```
+
+## Adding metadata and tags
+
+Use metadata and tags to organize and track your emails:
+
+```vue
+<script setup>
+const { send } = useLettermint()
+
+await send({
+  from: 'app@example.com',
+  to: 'user@example.com',
+  subject: 'Welcome to our app!',
+  html: '<h1>Welcome!</h1>',
+  tags: ['welcome', 'onboarding'],
+  metadata: {
+    userId: '12345',
+    campaign: 'welcome-series',
+    step: 1
+  }
+})
+</script>
+```
+
+<Tip>
+Metadata is useful for tracking campaigns, user IDs, or any custom data you want associated with the email.
+</Tip>
+
+## How it works
+
+When you call `send()`, the composable makes a POST request to `/api/lettermint/send`, which is automatically created by the module. This endpoint validates your email data and uses the Lettermint SDK server-side to send the email securely.
+
+<Warning>
+Never expose your Lettermint API key in client-side code. The module handles this by creating a server endpoint that keeps your API key secure.
+</Warning>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Server-side usage" icon="server" href="/guides/server-side">
+    Send emails from server routes and API handlers
+  </Card>
+  <Card title="Advanced usage" icon="wand-magic-sparkles" href="/guides/advanced-usage">
+    Learn about the fluent API and advanced features
+  </Card>
+</CardGroup>
