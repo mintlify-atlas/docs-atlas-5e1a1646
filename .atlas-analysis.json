@@ -1,0 +1,93 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "Nuxt Lettermint",
+  "projectDescription": "A Nuxt module for sending transactional emails using the Lettermint email service",
+  "theme": "mint",
+  "primaryColor": "#00DC82",
+  "lightColor": "#4ADE80",
+  "darkColor": "#059669",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/setup",
+              "configuration/environment-variables",
+              "configuration/auto-endpoint"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/client-side",
+              "guides/server-side",
+              "guides/advanced-usage",
+              "guides/custom-endpoints"
+            ]
+          },
+          {
+            "group": "Examples",
+            "pages": [
+              "examples/basic-email",
+              "examples/multiple-recipients",
+              "examples/attachments",
+              "examples/tags-metadata"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Composables",
+            "pages": [
+              "api/use-lettermint"
+            ]
+          },
+          {
+            "group": "Server Utils",
+            "pages": [
+              "api/send-email",
+              "api/lettermint-instance"
+            ]
+          },
+          {
+            "group": "Types",
+            "pages": [
+              "api/types"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Full TypeScript support with type definitions",
+    "Client-side composable (useLettermint) for Vue components",
+    "Server-side sendEmail utility for API routes",
+    "Auto-generated API endpoint at /api/lettermint/send",
+    "Flexible configuration via environment variables or nuxt.config.ts",
+    "Support for attachments, tags, metadata, and custom headers",
+    "Compatible with Nuxt 3 and Nuxt 4"
+  ],
+  "publicApiSurface": [
+    "useLettermint() - Client-side composable",
+    "sendEmail() - Server-side utility function",
+    "LettermintEmailOptions - Type for email options",
+    "LettermintResponse - Type for API responses",
+    "ModuleOptions - Module configuration interface",
+    "/api/lettermint/send - Auto-generated POST endpoint"
+  ]
+}
